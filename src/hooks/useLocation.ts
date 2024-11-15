@@ -7,12 +7,14 @@ import { v4 as uuidv4 } from 'uuid';
 export const useLocation = () => {
   const [isTracking, setIsTracking] = useState(false);
   const [trackingInterval, setTrackingInterval] = useState<NodeJS.Timer | null>(null);
+  const [trackingGuid, setTrackingGuid] = useState<string | null>(null);
 
   const startTracking = useCallback(() => {
     if (navigator.geolocation) {
       setIsTracking(true);
+      const newGuid = uuidv4();
+      setTrackingGuid(newGuid);
       
-      // Garantir que a collection existe
       const trackerRef = collection(db, 'tracker');
       
       const intervalId = setInterval(() => {
@@ -21,7 +23,7 @@ export const useLocation = () => {
           
           try {
             await addDoc(trackerRef, {
-              guid: uuidv4(),
+              guid: newGuid,
               latitude,
               longitude,
               timestamp: serverTimestamp(),
@@ -30,9 +32,8 @@ export const useLocation = () => {
             console.error('Erro ao salvar localização:', error);
           }
         });
-      }, 500); // 500ms = meio segundo
+      }, 500);
 
-      // Guarde o ID do intervalo para poder limpar depois
       setTrackingInterval(intervalId);
     }
   }, []);
@@ -40,6 +41,7 @@ export const useLocation = () => {
   const stopTracking = useCallback(() => {
     if (trackingInterval) {
       setIsTracking(false);
+      setTrackingGuid(null);
       clearInterval(trackingInterval);
       setTrackingInterval(null);
     }
