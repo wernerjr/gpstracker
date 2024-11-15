@@ -15,6 +15,15 @@ export const useLocation = () => {
   const [averageSpeed, setAverageSpeed] = useState<number | null>(null);
   const speedReadings = useRef<number[]>([]);
 
+  // Adicionar useEffect para atualizar a média quando currentSpeed mudar
+  useEffect(() => {
+    if (currentSpeed !== null && isTracking) {
+      speedReadings.current.push(currentSpeed);
+      const average = speedReadings.current.reduce((a, b) => a + b, 0) / speedReadings.current.length;
+      setAverageSpeed(average);
+    }
+  }, [currentSpeed, isTracking]);
+
   const startTracking = useCallback(() => {
     if (navigator.geolocation) {
       setIsTracking(true);
@@ -40,11 +49,6 @@ export const useLocation = () => {
             // Atualizar velocidade atual (convertendo m/s para km/h)
             const speedKmh = speed ? speed * 3.6 : 0;
             setCurrentSpeed(speedKmh);
-            
-            // Calcular velocidade média
-            speedReadings.current.push(speedKmh);
-            const average = speedReadings.current.reduce((a, b) => a + b, 0) / speedReadings.current.length;
-            setAverageSpeed(average);
             
             try {
               await addDoc(trackerRef, {
@@ -73,10 +77,15 @@ export const useLocation = () => {
 
   const stopTracking = useCallback(() => {
     if (trackingInterval) {
-      setIsTracking(false);
-      setTrackingGuid(null);
       clearInterval(trackingInterval);
       setTrackingInterval(null);
+      setIsTracking(false);
+      setTrackingGuid(null);
+      // Limpar outros estados
+      //setCurrentLocation(null);
+      //setCurrentSpeed(null);
+      //setAverageSpeed(null);
+      speedReadings.current = [];
     }
   }, [trackingInterval]);
 
