@@ -27,7 +27,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
     position: 'relative',
     overflow: 'hidden',
     height: '100%',
-    minHeight: '90px',
+    minHeight: '75px',
     display: 'flex',
     flexDirection: 'column',
     margin: '0.5rem',
