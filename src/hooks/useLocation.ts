@@ -88,6 +88,22 @@ export const useLocation = () => {
     }
   }, [isTracking, processPositionBuffer]);
 
+  // Função para calcular distância em metros
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Raio da Terra em metros
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // em metros
+  };
+
   useEffect(() => {
     if (navigator.geolocation) {
       watchId.current = navigator.geolocation.watchPosition(
@@ -104,56 +120,31 @@ export const useLocation = () => {
               longitude
             );
 
-            // Só registra se houver movimento significativo
-            if (distance >= MIN_DISTANCE) {
-              const timeInHours = (position.timestamp - lastPosition.current.timestamp) / 1000 / 3600;
-              const speedKmh = timeInHours > 0 ? distance / timeInHours : 0;
-              
-              setCurrentSpeed(speedKmh);
-              speedReadings.current.push(speedKmh);
-              
-              const avgSpeed = speedReadings.current.reduce((a, b) => a + b, 0) / speedReadings.current.length;
-              setAverageSpeed(avgSpeed);
-
-              if (trackingGuid.current) {
-                try {
-                  console.log('Salvando posição:', {
-                    latitude,
-                    longitude,
-                    accuracy: positionAccuracy,
-                    speed: speedKmh,
-                    timestamp: new Date(),
-                    distance // log da distância para debug
-                  });
-
-                  await localDb.addLocation({
-                    guid: trackingGuid.current,
-                    latitude,
-                    longitude,
-                    accuracy: positionAccuracy,
-                    speed: speedKmh,
-                    timestamp: new Date(),
-                  });
-                  await updateUnsyncedCount();
-                } catch (error) {
-                  console.error('Erro ao salvar localmente:', error);
-                }
-              }
-
-              lastPosition.current = { 
-                latitude, 
-                longitude, 
-                timestamp: position.timestamp 
-              };
-            }
-          } else if (isTracking) {
-            // Primeira posição do rastreamento
-            lastPosition.current = { 
-              latitude, 
-              longitude, 
-              timestamp: position.timestamp 
-            };
+            // Calcula o tempo em segundos
+            const timeInSeconds = (position.timestamp - lastPosition.current.timestamp) / 1000;
             
+            // Calcula a velocidade em km/h
+            // distance está em metros, timeInSeconds em segundos
+            // (metros / segundos) * (3600 segundos / 1 hora) * (1 km / 1000 metros)
+            const speedKmh = timeInSeconds > 0 
+              ? (distance / timeInSeconds) * 3.6 // Converte m/s para km/h
+              : 0;
+
+            // Filtra velocidades irreais (acima de 200 km/h)
+            const filteredSpeed = speedKmh > 200 ? lastSpeed.current || 0 : speedKmh;
+            lastSpeed.current = filteredSpeed;
+            
+            setCurrentSpeed(filteredSpeed);
+
+            // Mantém apenas as últimas 10 leituras para a média
+            speedReadings.current.push(filteredSpeed);
+            if (speedReadings.current.length > 10) {
+              speedReadings.current.shift();
+            }
+            
+            const avgSpeed = speedReadings.current.reduce((a, b) => a + b, 0) / speedReadings.current.length;
+            setAverageSpeed(avgSpeed);
+
             if (trackingGuid.current) {
               try {
                 await localDb.addLocation({
@@ -161,15 +152,21 @@ export const useLocation = () => {
                   latitude,
                   longitude,
                   accuracy: positionAccuracy,
-                  speed: 0,
+                  speed: filteredSpeed,
                   timestamp: new Date(),
                 });
                 await updateUnsyncedCount();
               } catch (error) {
-                console.error('Erro ao salvar primeira posição:', error);
+                console.error('Erro ao salvar localmente:', error);
               }
             }
           }
+
+          lastPosition.current = { 
+            latitude, 
+            longitude, 
+            timestamp: position.timestamp 
+          };
         },
         (error) => console.error('Erro de geolocalização:', error),
         {
@@ -187,21 +184,8 @@ export const useLocation = () => {
     };
   }, [isTracking, updateUnsyncedCount]);
 
-  // Função para calcular distância em metros
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371e3; // Raio da Terra em metros
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return R * c; // em metros
-  };
+  // Adicione esta referência para a última velocidade válida
+  const lastSpeed = useRef<number>(0);
 
   // Processa buffer restante ao parar o rastreamento
   const stopTracking = useCallback(async () => {
