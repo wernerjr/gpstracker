@@ -60,7 +60,7 @@ export const LocationTracker: React.FC = () => {
     unsyncedCount,
   } = useLocation();
 
-  const isPrecisionAcceptable = accuracy !== null && accuracy <= 1879;
+  const isPrecisionAcceptable = accuracy !== null && accuracy <= 15;
 
   const SyncStatus = () => {
     if (!lastSyncStatus.date && !unsyncedCount) {
