@@ -1,15 +1,7 @@
-import React from 'react';
-import { LocationTracker } from './components/LocationTracker';
-import './App.css';
+import { LocationTracker } from './pages/LocationTracker';
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <LocationTracker />
-      </header>
-    </div>
-  );
+  return <LocationTracker />;
 }
 
 export default App; 
