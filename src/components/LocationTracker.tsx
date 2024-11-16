@@ -1,6 +1,45 @@
 import React from 'react';
 import { useLocation } from '../hooks/useLocation';
 
+const AccuracyIndicator = ({ accuracy }: { accuracy: number | null }) => {
+  const getAccuracyColor = (accuracy: number | null) => {
+    if (!accuracy) return '#e74c3c'; // vermelho por padrão
+    if (accuracy < 5) return '#2ecc71';  // verde
+    if (accuracy < 15) return '#f1c40f'; // amarelo
+    return '#e74c3c'; // vermelho
+  };
+
+  const getAccuracyText = (accuracy: number | null) => {
+    if (!accuracy) return 'Sem sinal';
+    if (accuracy < 5) return 'Excelente';
+    if (accuracy < 15) return 'Boa';
+    return 'Baixa';
+  };
+
+  const color = getAccuracyColor(accuracy);
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      marginBottom: '1rem'
+    }}>
+      <div style={{
+        width: '12px',
+        height: '12px',
+        borderRadius: '50%',
+        backgroundColor: color,
+        boxShadow: `0 0 10px ${color}`,
+        transition: 'all 0.3s ease'
+      }} />
+      <span>
+        Precisão: {accuracy ? `${accuracy.toFixed(1)}m (${getAccuracyText(accuracy)})` : '-'}
+      </span>
+    </div>
+  );
+};
+
 export const LocationTracker: React.FC = () => {
   const { 
     isTracking, 
@@ -12,25 +51,9 @@ export const LocationTracker: React.FC = () => {
     accuracy
   } = useLocation();
 
-  const AccuracyIndicator = () => (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      marginBottom: '1rem'
-    }}>
-      <div style={{
-        width: '12px',
-        height: '12px',
-        borderRadius: '50%',
-        backgroundColor: accuracy && accuracy < 5 ? '#2ecc71' : '#e74c3c',
-        boxShadow: `0 0 10px ${accuracy && accuracy < 5 ? '#2ecc71' : '#e74c3c'}`,
-      }} />
-      <span>
-        Precisão: {accuracy ? `${accuracy.toFixed(1)}m` : '-'}
-      </span>
-    </div>
-  );
+  //const isPrecisionAcceptable = accuracy !== null && accuracy < 15;
+
+  const isPrecisionAcceptable = true;
 
   return (
     <div style={{
@@ -50,19 +73,22 @@ export const LocationTracker: React.FC = () => {
         GPS Tracker
       </h1>
 
-      <AccuracyIndicator />
+      <AccuracyIndicator accuracy={accuracy} />
       
       <button 
         onClick={isTracking ? stopTracking : startTracking}
+        disabled={!isTracking && !isPrecisionAcceptable}
         style={{
           padding: '12px 24px',
           fontSize: '1.1rem',
-          backgroundColor: isTracking ? '#dc3545' : '#28a745',
+          backgroundColor: isTracking ? '#dc3545' : 
+                         !isPrecisionAcceptable ? '#666' : '#28a745',
           color: 'white',
           border: 'none',
           borderRadius: '8px',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease'
+          cursor: isTracking || isPrecisionAcceptable ? 'pointer' : 'not-allowed',
+          transition: 'all 0.3s ease',
+          opacity: !isPrecisionAcceptable && !isTracking ? 0.7 : 1
         }}
       >
         {isTracking ? 'Parar Rastreamento' : 'Iniciar Rastreamento'}
