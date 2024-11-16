@@ -20,7 +20,6 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 export const useLocation = () => {
   const [isTracking, setIsTracking] = useState(false);
   const [trackingInterval, setTrackingInterval] = useState<NodeJS.Timer | null>(null);
-  const [trackingGuid, setTrackingGuid] = useState<string | null>(null);
   
   // Novos estados
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -28,6 +27,7 @@ export const useLocation = () => {
   const [averageSpeed, setAverageSpeed] = useState<number | null>(null);
   const speedReadings = useRef<number[]>([]);
   const lastPosition = useRef<{latitude: number; longitude: number; timestamp: number} | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
 
   // Adicionar useEffect para atualizar a média quando currentSpeed mudar
   useEffect(() => {
@@ -42,7 +42,6 @@ export const useLocation = () => {
     if (navigator.geolocation) {
       setIsTracking(true);
       const newGuid = uuidv4();
-      setTrackingGuid(newGuid);
       
       // Resetar valores
       setCurrentLocation(null);
@@ -56,8 +55,8 @@ export const useLocation = () => {
       const intervalId = setInterval(() => {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
-            const { latitude, longitude } = position.coords;
-            const timestamp = position.timestamp;
+            const { latitude, longitude, accuracy } = position.coords;
+            setAccuracy(accuracy);
             
             // Atualizar localização atual
             setCurrentLocation({ latitude, longitude });
@@ -70,20 +69,19 @@ export const useLocation = () => {
                 latitude,
                 longitude
               );
-              const timeInHours = (timestamp - lastPosition.current.timestamp) / 1000 / 3600; // Converter ms para horas
+              const timeInHours = (position.timestamp - lastPosition.current.timestamp) / 1000 / 3600; // Converter ms para horas
               const speedKmh = timeInHours > 0 ? distance / timeInHours : 0;
               setCurrentSpeed(speedKmh);
             }
             
             // Atualizar última posição
-            lastPosition.current = { latitude, longitude, timestamp };
+            lastPosition.current = { latitude, longitude, timestamp: position.timestamp };
             
             try {
               await addDoc(trackerRef, {
                 guid: newGuid,
                 latitude,
                 longitude,
-                speed: currentSpeed,
                 timestamp: Timestamp.fromDate(new Date()),
               });
             } catch (error) {
@@ -108,11 +106,6 @@ export const useLocation = () => {
       clearInterval(trackingInterval);
       setTrackingInterval(null);
       setIsTracking(false);
-      setTrackingGuid(null);
-      // Limpar outros estados
-      //setCurrentLocation(null);
-      //setCurrentSpeed(null);
-      //setAverageSpeed(null);
       speedReadings.current = [];
     }
   }, [trackingInterval]);
@@ -123,6 +116,7 @@ export const useLocation = () => {
     stopTracking,
     currentLocation,
     currentSpeed,
-    averageSpeed
+    averageSpeed,
+    accuracy
   };
 }; 

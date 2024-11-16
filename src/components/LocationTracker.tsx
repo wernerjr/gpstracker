@@ -8,8 +8,29 @@ export const LocationTracker: React.FC = () => {
     stopTracking, 
     currentLocation, 
     currentSpeed, 
-    averageSpeed 
+    averageSpeed,
+    accuracy
   } = useLocation();
+
+  const AccuracyIndicator = () => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      marginBottom: '1rem'
+    }}>
+      <div style={{
+        width: '12px',
+        height: '12px',
+        borderRadius: '50%',
+        backgroundColor: accuracy && accuracy < 5 ? '#2ecc71' : '#e74c3c',
+        boxShadow: `0 0 10px ${accuracy && accuracy < 5 ? '#2ecc71' : '#e74c3c'}`,
+      }} />
+      <span>
+        Precisão: {accuracy ? `${accuracy.toFixed(1)}m` : '-'}
+      </span>
+    </div>
+  );
 
   return (
     <div style={{
@@ -28,6 +49,8 @@ export const LocationTracker: React.FC = () => {
       }}>
         GPS Tracker
       </h1>
+
+      <AccuracyIndicator />
       
       <button 
         onClick={isTracking ? stopTracking : startTracking}
