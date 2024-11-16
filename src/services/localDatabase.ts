@@ -6,9 +6,9 @@ export interface LocationRecord {
   latitude: number;
   longitude: number;
   accuracy: number;
-  speed: number | null;
+  speed: number;
   timestamp: Date;
-  synced: 0 | 1;
+  synced?: number;
 }
 
 class LocationDatabase extends Dexie {
@@ -21,14 +21,11 @@ class LocationDatabase extends Dexie {
     });
   }
 
-  async addLocation(record: Omit<LocationRecord, 'id' | 'synced'>) {
-    console.log('Adicionando registro ao banco:', record);
-    const id = await this.locations.add({
-      ...record,
+  async addLocation(data: Omit<LocationRecord, 'id' | 'synced'>) {
+    return await this.locations.add({
+      ...data,
       synced: 0
     });
-    console.log('Registro adicionado com ID:', id);
-    return id;
   }
 
   async addLocations(records: Omit<LocationRecord, 'id' | 'synced'>[]) {

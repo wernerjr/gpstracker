@@ -32,6 +32,7 @@ export const useLocation = () => {
     error?: string;
   }>({ date: null, count: 0 });
   const [unsyncedCount, setUnsyncedCount] = useState<number>(0);
+  const [maxSpeed, setMaxSpeed] = useState<number>(0);
   
   const watchId = useRef<number | null>(null);
   const lastPosition = useRef<{latitude: number; longitude: number; timestamp: number} | null>(null);
@@ -46,6 +47,9 @@ export const useLocation = () => {
   }[]>([]);
   const processingBuffer = useRef<boolean>(false);
   const MIN_DISTANCE = 0.5; // Distância mínima em metros para registrar nova posição
+
+  // Calcular isPrecisionAcceptable baseado na accuracy
+  const isPrecisionAcceptable = accuracy !== null && accuracy <= 15;
 
   // Função para atualizar contagem de não sincronizados
   const updateUnsyncedCount = useCallback(async () => {
@@ -67,7 +71,11 @@ export const useLocation = () => {
       for (const position of positions) {
         await localDb.addLocation({
           guid: trackingGuid.current,
-          ...position
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracy: position.accuracy,
+          speed: position.speed ?? 0,
+          timestamp: position.timestamp
         });
       }
       await updateUnsyncedCount();
@@ -104,11 +112,39 @@ export const useLocation = () => {
     return R * c; // em metros
   };
 
+  const savePositions = async (positions: Array<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    speed: number | null;
+    timestamp: Date;
+  }>) => {
+    if (!trackingGuid.current) return;
+
+    try {
+      for (const position of positions) {
+        await localDb.addLocation({
+          guid: trackingGuid.current,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracy: position.accuracy,
+          speed: position.speed ?? 0,
+          timestamp: position.timestamp
+        });
+      }
+      await updateUnsyncedCount();
+    } catch (error) {
+      console.error('Erro ao salvar posições:', error);
+    }
+  };
+
   useEffect(() => {
     if (navigator.geolocation) {
       watchId.current = navigator.geolocation.watchPosition(
         async (position) => {
           const { latitude, longitude, accuracy: positionAccuracy } = position.coords;
+          const speed = position.coords.speed;
+          
           setAccuracy(positionAccuracy);
           setCurrentLocation({ latitude, longitude });
 
@@ -135,6 +171,11 @@ export const useLocation = () => {
             lastSpeed.current = filteredSpeed;
             
             setCurrentSpeed(filteredSpeed);
+            
+            // Atualiza velocidade máxima
+            if (filteredSpeed > maxSpeed) {
+              setMaxSpeed(filteredSpeed);
+            }
 
             // Mantém apenas as últimas 10 leituras para a média
             speedReadings.current.push(filteredSpeed);
@@ -152,8 +193,8 @@ export const useLocation = () => {
                   latitude,
                   longitude,
                   accuracy: positionAccuracy,
-                  speed: filteredSpeed,
-                  timestamp: new Date(),
+                  speed: currentSpeed ?? 0,
+                  timestamp: new Date()
                 });
                 await updateUnsyncedCount();
               } catch (error) {
@@ -182,7 +223,7 @@ export const useLocation = () => {
         navigator.geolocation.clearWatch(watchId.current);
       }
     };
-  }, [isTracking, updateUnsyncedCount]);
+  }, [isTracking, updateUnsyncedCount, maxSpeed]);
 
   // Adicione esta referência para a última velocidade válida
   const lastSpeed = useRef<number>(0);
@@ -202,6 +243,7 @@ export const useLocation = () => {
     speedReadings.current = [];
     setCurrentSpeed(null);
     setAverageSpeed(null);
+    setMaxSpeed(0); // Reseta a velocidade máxima ao parar
   }, [processPositionBuffer]);
 
   const startTracking = useCallback(() => {
@@ -228,6 +270,34 @@ export const useLocation = () => {
     }
   };
 
+  // Função para sincronizar dados
+  const syncData = useCallback(async () => {
+    try {
+      const unsynced = await localDb.getUnsynced();
+      if (unsynced.length === 0) return;
+
+      console.log('Sincronizando dados...', unsynced.length);
+      
+      // Filtrar apenas os IDs definidos
+      const ids = unsynced
+        .map(record => record.id)
+        .filter((id): id is number => id !== undefined);
+
+      if (ids.length > 0) {
+        await localDb.markAsSynced(ids);
+      }
+      
+      await updateUnsyncedCount();
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+    }
+  }, []);
+
+  // Atualizar contador ao montar o componente
+  useEffect(() => {
+    updateUnsyncedCount();
+  }, [updateUnsyncedCount]);
+
   return {
     isTracking,
     startTracking,
@@ -241,5 +311,8 @@ export const useLocation = () => {
     handleSync,
     unsyncedCount,
     updateUnsyncedCount,
+    maxSpeed,
+    syncData,
+    isPrecisionAcceptable,
   };
 }; 
