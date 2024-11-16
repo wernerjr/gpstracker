@@ -19,7 +19,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export const useLocation = () => {
   const [isTracking, setIsTracking] = useState(false);
-  const [trackingInterval, setTrackingInterval] = useState<NodeJS.Timer | null>(null);
+  const watchId = useRef<number | null>(null);
   
   // Novos estados
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -52,63 +52,69 @@ export const useLocation = () => {
       
       const trackerRef = collection(db, 'tracker');
       
-      const intervalId = setInterval(() => {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude, accuracy } = position.coords;
-            setAccuracy(accuracy);
-            
-            // Atualizar localização atual
-            setCurrentLocation({ latitude, longitude });
-            
-            // Calcular velocidade usando a fórmula de Haversine
-            if (lastPosition.current) {
-              const distance = calculateDistance(
-                lastPosition.current.latitude,
-                lastPosition.current.longitude,
-                latitude,
-                longitude
-              );
-              const timeInHours = (position.timestamp - lastPosition.current.timestamp) / 1000 / 3600; // Converter ms para horas
-              const speedKmh = timeInHours > 0 ? distance / timeInHours : 0;
-              setCurrentSpeed(speedKmh);
-            }
-            
-            // Atualizar última posição
-            lastPosition.current = { latitude, longitude, timestamp: position.timestamp };
-            
-            try {
-              await addDoc(trackerRef, {
-                guid: newGuid,
-                latitude,
-                longitude,
-                timestamp: Timestamp.fromDate(new Date()),
-              });
-            } catch (error) {
-              console.error('Erro ao salvar localização:', error);
-            }
-          },
-          (error) => console.error('Erro de geolocalização:', error),
-          {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
+      watchId.current = navigator.geolocation.watchPosition(
+        async (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          setAccuracy(accuracy);
+          
+          // Atualizar localização atual
+          setCurrentLocation({ latitude, longitude });
+          
+          // Calcular velocidade usando a fórmula de Haversine
+          if (lastPosition.current) {
+            const distance = calculateDistance(
+              lastPosition.current.latitude,
+              lastPosition.current.longitude,
+              latitude,
+              longitude
+            );
+            const timeInHours = (position.timestamp - lastPosition.current.timestamp) / 1000 / 3600;
+            const speedKmh = timeInHours > 0 ? distance / timeInHours : 0;
+            setCurrentSpeed(speedKmh);
           }
-        );
-      }, 500);
-
-      setTrackingInterval(intervalId);
+          
+          // Atualizar última posição
+          lastPosition.current = { latitude, longitude, timestamp: position.timestamp };
+          
+          try {
+            await addDoc(trackerRef, {
+              guid: newGuid,
+              latitude,
+              longitude,
+              accuracy,
+              timestamp: Timestamp.fromDate(new Date()),
+            });
+          } catch (error) {
+            console.error('Erro ao salvar localização:', error);
+          }
+        },
+        (error) => console.error('Erro de geolocalização:', error),
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
     }
   }, []);
 
   const stopTracking = useCallback(() => {
-    if (trackingInterval) {
-      clearInterval(trackingInterval);
-      setTrackingInterval(null);
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
       setIsTracking(false);
       speedReadings.current = [];
     }
-  }, [trackingInterval]);
+  }, []);
+
+  // Limpar watch quando o componente for desmontado
+  useEffect(() => {
+    return () => {
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, []);
 
   return {
     isTracking,
