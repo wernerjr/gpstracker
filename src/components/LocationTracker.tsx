@@ -48,7 +48,10 @@ export const LocationTracker: React.FC = () => {
     currentLocation, 
     currentSpeed, 
     averageSpeed,
-    accuracy
+    accuracy,
+    isSyncing,
+    lastSyncStatus,
+    handleSync,
   } = useLocation();
 
   const isPrecisionAcceptable = accuracy !== null && accuracy <= 15;
@@ -100,6 +103,38 @@ export const LocationTracker: React.FC = () => {
         }}>
           Aguardando sinal GPS com precisão adequada...
         </p>
+      )}
+
+      <button 
+        onClick={handleSync}
+        disabled={isSyncing}
+        style={{
+          padding: '12px 24px',
+          fontSize: '1.1rem',
+          backgroundColor: '#3498db',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: isSyncing ? 'not-allowed' : 'pointer',
+          marginTop: '1rem',
+          opacity: isSyncing ? 0.7 : 1,
+        }}
+      >
+        {isSyncing ? 'Sincronizando...' : 'Sincronizar Dados'}
+      </button>
+
+      {lastSyncStatus.date && (
+        <div style={{ 
+          marginTop: '1rem',
+          fontSize: '0.9rem',
+          color: lastSyncStatus.error ? '#e74c3c' : '#7f8c8d'
+        }}>
+          Última sincronização: {lastSyncStatus.date.toLocaleString()}
+          <br />
+          {lastSyncStatus.error ? 
+            `Erro: ${lastSyncStatus.error}` : 
+            `${lastSyncStatus.count} registros sincronizados`}
+        </div>
       )}
 
       <div style={{ 

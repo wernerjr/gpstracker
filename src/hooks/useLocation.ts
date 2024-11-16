@@ -3,6 +3,8 @@ import { addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firesto
 import { Firestore } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { v4 as uuidv4 } from 'uuid';
+import { db as localDb } from '../services/localDatabase';
+import { syncLocations } from '../services/syncService';
 
 // Função auxiliar para calcular a distância usando a fórmula de Haversine
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -23,6 +25,12 @@ export const useLocation = () => {
   const [currentLocation, setCurrentLocation] = useState<{latitude: number; longitude: number} | null>(null);
   const [currentSpeed, setCurrentSpeed] = useState<number | null>(null);
   const [averageSpeed, setAverageSpeed] = useState<number | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncStatus, setLastSyncStatus] = useState<{
+    date: Date | null;
+    count: number;
+    error?: string;
+  }>({ date: null, count: 0 });
   
   const watchId = useRef<number | null>(null);
   const lastPosition = useRef<{latitude: number; longitude: number; timestamp: number} | null>(null);
@@ -33,7 +41,7 @@ export const useLocation = () => {
   useEffect(() => {
     if (navigator.geolocation) {
       watchId.current = navigator.geolocation.watchPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude, accuracy: positionAccuracy } = position.coords;
           setAccuracy(positionAccuracy);
           setCurrentLocation({ latitude, longitude });
@@ -57,15 +65,18 @@ export const useLocation = () => {
 
             // Enviar para Firebase apenas se estiver rastreando
             if (trackingGuid.current) {
-              const trackerRef = collection(db, 'tracker');
-              addDoc(trackerRef, {
-                guid: trackingGuid.current,
-                latitude,
-                longitude,
-                accuracy: positionAccuracy,
-                speed: speedKmh,
-                timestamp: Timestamp.fromDate(new Date()),
-              }).catch(error => console.error('Erro ao salvar localização:', error));
+              try {
+                await localDb.addLocation({
+                  guid: trackingGuid.current,
+                  latitude,
+                  longitude,
+                  accuracy: positionAccuracy,
+                  speed: speedKmh,
+                  timestamp: new Date(),
+                });
+              } catch (error) {
+                console.error('Erro ao salvar localmente:', error);
+              }
             }
           }
 
@@ -103,6 +114,20 @@ export const useLocation = () => {
     setAverageSpeed(null);
   }, []);
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await syncLocations();
+      setLastSyncStatus({
+        date: new Date(),
+        count: result.syncedCount,
+        error: result.error,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return {
     isTracking,
     startTracking,
@@ -110,6 +135,9 @@ export const useLocation = () => {
     currentLocation,
     currentSpeed,
     averageSpeed,
-    accuracy
+    accuracy,
+    isSyncing,
+    lastSyncStatus,
+    handleSync,
   };
 }; 
