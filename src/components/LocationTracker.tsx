@@ -51,9 +51,7 @@ export const LocationTracker: React.FC = () => {
     accuracy
   } = useLocation();
 
-  //const isPrecisionAcceptable = accuracy !== null && accuracy < 15;
-
-  const isPrecisionAcceptable = true;
+  const isPrecisionAcceptable = accuracy !== null && accuracy <= 15;
 
   return (
     <div style={{
@@ -93,6 +91,16 @@ export const LocationTracker: React.FC = () => {
       >
         {isTracking ? 'Parar Rastreamento' : 'Iniciar Rastreamento'}
       </button>
+
+      {!isPrecisionAcceptable && !isTracking && (
+        <p style={{ 
+          color: '#e74c3c', 
+          marginTop: '1rem',
+          textAlign: 'center' 
+        }}>
+          Aguardando sinal GPS com precisão adequada...
+        </p>
+      )}
 
       <div style={{ 
         marginTop: '2rem',
