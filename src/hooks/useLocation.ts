@@ -31,13 +31,63 @@ export const useLocation = () => {
     count: number;
     error?: string;
   }>({ date: null, count: 0 });
+  const [unsyncedCount, setUnsyncedCount] = useState<number>(0);
   
   const watchId = useRef<number | null>(null);
   const lastPosition = useRef<{latitude: number; longitude: number; timestamp: number} | null>(null);
   const speedReadings = useRef<number[]>([]);
   const trackingGuid = useRef<string | null>(null);
+  const positionBuffer = useRef<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    speed: number | null;
+    timestamp: Date;
+  }[]>([]);
+  const processingBuffer = useRef<boolean>(false);
+  const MIN_DISTANCE = 0.5; // Distância mínima em metros para registrar nova posição
 
-  // Inicia o monitoramento do GPS assim que o componente é montado
+  // Função para atualizar contagem de não sincronizados
+  const updateUnsyncedCount = useCallback(async () => {
+    const unsynced = await localDb.getUnsynced();
+    setUnsyncedCount(unsynced.length);
+  }, []);
+
+  // Função para processar o buffer de posições
+  const processPositionBuffer = useCallback(async () => {
+    if (processingBuffer.current || !trackingGuid.current || positionBuffer.current.length === 0) {
+      return;
+    }
+
+    processingBuffer.current = true;
+    const positions = [...positionBuffer.current];
+    positionBuffer.current = [];
+
+    try {
+      for (const position of positions) {
+        await localDb.addLocation({
+          guid: trackingGuid.current,
+          ...position
+        });
+      }
+      await updateUnsyncedCount();
+    } catch (error) {
+      console.error('Erro ao salvar posições:', error);
+      // Em caso de erro, retorna as posições para o buffer
+      positionBuffer.current = [...positions, ...positionBuffer.current];
+    } finally {
+      processingBuffer.current = false;
+    }
+  }, [updateUnsyncedCount]);
+
+  // Processa o buffer periodicamente
+  useEffect(() => {
+    if (isTracking) {
+      const interval = setInterval(processPositionBuffer, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isTracking, processPositionBuffer]);
+
   useEffect(() => {
     if (navigator.geolocation) {
       watchId.current = navigator.geolocation.watchPosition(
@@ -46,7 +96,6 @@ export const useLocation = () => {
           setAccuracy(positionAccuracy);
           setCurrentLocation({ latitude, longitude });
 
-          // Só calcula velocidade e envia para Firebase se estiver rastreando
           if (isTracking && lastPosition.current) {
             const distance = calculateDistance(
               lastPosition.current.latitude,
@@ -54,16 +103,57 @@ export const useLocation = () => {
               latitude,
               longitude
             );
-            const timeInHours = (position.timestamp - lastPosition.current.timestamp) / 1000 / 3600;
-            const speedKmh = timeInHours > 0 ? distance / timeInHours : 0;
-            
-            setCurrentSpeed(speedKmh);
-            speedReadings.current.push(speedKmh);
-            
-            const avgSpeed = speedReadings.current.reduce((a, b) => a + b, 0) / speedReadings.current.length;
-            setAverageSpeed(avgSpeed);
 
-            // Enviar para Firebase apenas se estiver rastreando
+            // Só registra se houver movimento significativo
+            if (distance >= MIN_DISTANCE) {
+              const timeInHours = (position.timestamp - lastPosition.current.timestamp) / 1000 / 3600;
+              const speedKmh = timeInHours > 0 ? distance / timeInHours : 0;
+              
+              setCurrentSpeed(speedKmh);
+              speedReadings.current.push(speedKmh);
+              
+              const avgSpeed = speedReadings.current.reduce((a, b) => a + b, 0) / speedReadings.current.length;
+              setAverageSpeed(avgSpeed);
+
+              if (trackingGuid.current) {
+                try {
+                  console.log('Salvando posição:', {
+                    latitude,
+                    longitude,
+                    accuracy: positionAccuracy,
+                    speed: speedKmh,
+                    timestamp: new Date(),
+                    distance // log da distância para debug
+                  });
+
+                  await localDb.addLocation({
+                    guid: trackingGuid.current,
+                    latitude,
+                    longitude,
+                    accuracy: positionAccuracy,
+                    speed: speedKmh,
+                    timestamp: new Date(),
+                  });
+                  await updateUnsyncedCount();
+                } catch (error) {
+                  console.error('Erro ao salvar localmente:', error);
+                }
+              }
+
+              lastPosition.current = { 
+                latitude, 
+                longitude, 
+                timestamp: position.timestamp 
+              };
+            }
+          } else if (isTracking) {
+            // Primeira posição do rastreamento
+            lastPosition.current = { 
+              latitude, 
+              longitude, 
+              timestamp: position.timestamp 
+            };
+            
             if (trackingGuid.current) {
               try {
                 await localDb.addLocation({
@@ -71,21 +161,20 @@ export const useLocation = () => {
                   latitude,
                   longitude,
                   accuracy: positionAccuracy,
-                  speed: speedKmh,
+                  speed: 0,
                   timestamp: new Date(),
                 });
+                await updateUnsyncedCount();
               } catch (error) {
-                console.error('Erro ao salvar localmente:', error);
+                console.error('Erro ao salvar primeira posição:', error);
               }
             }
           }
-
-          lastPosition.current = { latitude, longitude, timestamp: position.timestamp };
         },
         (error) => console.error('Erro de geolocalização:', error),
         {
           enableHighAccuracy: true,
-          timeout: 5000,
+          timeout: 50,
           maximumAge: 0
         }
       );
@@ -96,19 +185,44 @@ export const useLocation = () => {
         navigator.geolocation.clearWatch(watchId.current);
       }
     };
-  }, [isTracking]); // Dependência em isTracking para reagir às mudanças de estado
+  }, [isTracking, updateUnsyncedCount]);
+
+  // Função para calcular distância em metros
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Raio da Terra em metros
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // em metros
+  };
+
+  // Processa buffer restante ao parar o rastreamento
+  const stopTracking = useCallback(async () => {
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    
+    // Processa qualquer posição restante no buffer
+    await processPositionBuffer();
+    
+    setIsTracking(false);
+    trackingGuid.current = null;
+    speedReadings.current = [];
+    setCurrentSpeed(null);
+    setAverageSpeed(null);
+  }, [processPositionBuffer]);
 
   const startTracking = useCallback(() => {
     setIsTracking(true);
     trackingGuid.current = uuidv4();
-    speedReadings.current = [];
-    setCurrentSpeed(null);
-    setAverageSpeed(null);
-  }, []);
-
-  const stopTracking = useCallback(() => {
-    setIsTracking(false);
-    trackingGuid.current = null;
     speedReadings.current = [];
     setCurrentSpeed(null);
     setAverageSpeed(null);
@@ -123,6 +237,8 @@ export const useLocation = () => {
         count: result.syncedCount,
         error: result.error,
       });
+      // Atualizar contagem após sincronização
+      await updateUnsyncedCount();
     } finally {
       setIsSyncing(false);
     }
@@ -139,5 +255,7 @@ export const useLocation = () => {
     isSyncing,
     lastSyncStatus,
     handleSync,
+    unsyncedCount,
+    updateUnsyncedCount,
   };
 }; 

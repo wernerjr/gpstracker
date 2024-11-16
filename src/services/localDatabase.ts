@@ -8,7 +8,7 @@ export interface LocationRecord {
   accuracy: number;
   speed: number | null;
   timestamp: Date;
-  synced: number;
+  synced: 0 | 1;
 }
 
 class LocationDatabase extends Dexie {
@@ -22,17 +22,31 @@ class LocationDatabase extends Dexie {
   }
 
   async addLocation(record: Omit<LocationRecord, 'id' | 'synced'>) {
-    return await this.locations.add({
+    console.log('Adicionando registro ao banco:', record);
+    const id = await this.locations.add({
       ...record,
       synced: 0
     });
+    console.log('Registro adicionado com ID:', id);
+    return id;
+  }
+
+  async addLocations(records: Omit<LocationRecord, 'id' | 'synced'>[]) {
+    return await this.locations.bulkAdd(
+      records.map(record => ({
+        ...record,
+        synced: 0
+      }))
+    );
   }
 
   async getUnsynced(): Promise<LocationRecord[]> {
-    return await this.locations
+    const records = await this.locations
       .where('synced')
       .equals(0)
       .toArray();
+    console.log('Registros não sincronizados:', records.length);
+    return records;
   }
 
   async markAsSynced(ids: number[]) {
