@@ -29,6 +29,7 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
   const watchId = useRef<number | null>(null);
   const trackingGuid = useRef<string | null>(null);
   const speedReadings = useRef<number[]>([]);
+  const { updateUnsyncedCount } = useSync();
 
   const calculateAverageSpeed = useCallback((speeds: number[]): number => {
     if (speeds.length === 0) return 0;
@@ -36,7 +37,7 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     return sum / speeds.length;
   }, []);
 
-  const handlePositionUpdate = useCallback((position: GeolocationPosition) => {
+  const handlePositionUpdate = useCallback(async (position: GeolocationPosition) => {
     const speed = position.coords.speed ? position.coords.speed * 3.6 : 0;
     setCurrentSpeed(speed);
     setAccuracy(position.coords.accuracy);
@@ -47,13 +48,33 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     const avgSpeed = calculateAverageSpeed(speedReadings.current);
     setAverageSpeed(avgSpeed);
     
-    setCurrentLocation({
+    const locationData = {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
       speed,
       timestamp: position.timestamp
-    });
-  }, [calculateAverageSpeed]);
+    };
+
+    setCurrentLocation(locationData);
+
+    if (isTracking && trackingGuid.current) {
+      try {
+        await db.addLocation({
+          guid: trackingGuid.current,
+          trackingId: trackingGuid.current,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed,
+          timestamp: new Date(position.timestamp)
+        });
+        
+        await updateUnsyncedCount();
+      } catch (error) {
+        console.error('Erro ao salvar localização:', error);
+      }
+    }
+  }, [isTracking, updateUnsyncedCount]);
 
   const checkGPSPermissions = async (): Promise<boolean> => {
     try {
