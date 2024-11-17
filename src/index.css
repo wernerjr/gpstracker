@@ -1,3 +1,14 @@
+:root {
+  --color-background: #1a1a1a;
+  --color-surface: #2d2d2d;
+  --color-primary: #3498db;
+  --color-text: white;
+  --color-border: #3498db;
+  --color-error: #e74c3c;
+  --color-success: #2ecc71;
+  --color-warning: #f1c40f;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +17,7 @@
 }
 
 html, body, #root {
-  background-color: #1a1a1a;
+  background-color: var(--color-background);
   min-height: 100vh;
   width: 100%;
   margin: 0;
@@ -20,13 +31,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: white;
+  color: var(--color-text);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .App {
-  background-color: #1a1a1a;
+  background-color: var(--color-background);
   min-height: 100vh;
   width: 100%;
   margin: 0;
@@ -35,31 +46,20 @@ body {
   flex-direction: column;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .animate-spin {
   animation: spin 1s linear infinite;
 }
 
-/* Esconde a barra de rolagem mas mantém a funcionalidade */
 html {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer e Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-/* Esconde a barra de rolagem do Chrome, Safari e Opera */
 html::-webkit-scrollbar {
   display: none;
 }

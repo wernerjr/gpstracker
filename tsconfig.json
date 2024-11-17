@@ -26,6 +26,8 @@
     ]
   },
   "include": [
-    "src"
-, "public/service-worker.ts"  ]
+    "src",
+    "src/types/custom.d.ts",
+    "public/service-worker.ts"
+  ]
 }
