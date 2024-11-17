@@ -3,6 +3,7 @@ import { SyncProvider, useSync } from './SyncContext';
 import { db } from '../services/localDatabase';
 import { syncLocations } from '../services/syncService';
 import React from 'react';
+import { SyncResult } from '../types/common';
 
 // Mocks
 jest.mock('../services/localDatabase', () => ({
@@ -63,7 +64,7 @@ describe('SyncContext', () => {
   });
 
   it('não deve permitir sincronização simultânea', async () => {
-    const mockSyncResult = { success: true, syncedCount: 5 };
+    const mockSyncResult: SyncResult = { success: true, syncedCount: 5 };
     (syncLocations as jest.Mock).mockImplementation(() => 
       new Promise(resolve => setTimeout(() => resolve(mockSyncResult), 100))
     );
@@ -71,10 +72,15 @@ describe('SyncContext', () => {
     const { result } = renderHook(() => useSync(), { wrapper });
 
     // Inicia primeira sincronização
-    const firstSyncPromise = result.current.syncData();
+    let firstSyncPromise: Promise<SyncResult>;
+    await act(async () => {
+      firstSyncPromise = result.current.syncData();
+    });
 
     // Tenta segunda sincronização imediatamente
-    const secondSyncResult = await result.current.syncData();
+    const secondSyncResult = await act(async () => {
+      return await result.current.syncData();
+    }) as SyncResult;
 
     expect(secondSyncResult).toEqual({
       success: false,
@@ -83,7 +89,9 @@ describe('SyncContext', () => {
     });
 
     // Aguarda primeira sincronização terminar
-    await firstSyncPromise;
+    await act(async () => {
+      await firstSyncPromise;
+    });
   });
 
   it('deve obter registros não sincronizados corretamente', async () => {

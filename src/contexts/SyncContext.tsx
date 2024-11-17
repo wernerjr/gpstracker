@@ -34,7 +34,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setIsSyncing(true);
     try {
       const result = await syncLocations();
-      await updateUnsyncedCount();
+      if (result.success) {
+        await updateUnsyncedCount();
+      }
       return result;
     } finally {
       setIsSyncing(false);
