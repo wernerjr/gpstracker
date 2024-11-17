@@ -38,13 +38,23 @@ class LocationDatabase extends Dexie {
     );
   }
 
-  async getUnsynced(): Promise<LocationRecord[]> {
+  async getUnsynced(page: number = 1, limit: number = 20): Promise<LocationRecord[]> {
+    const offset = (page - 1) * limit;
     const records = await this.locations
       .where('synced')
       .equals(0)
+      .offset(offset)
+      .limit(limit)
+      .reverse()
       .toArray();
-    console.log('Registros não sincronizados:', records.length);
     return records;
+  }
+
+  async getUnsyncedCount(): Promise<number> {
+    return await this.locations
+      .where('synced')
+      .equals(0)
+      .count();
   }
 
   async markAsSynced(ids: number[]) {

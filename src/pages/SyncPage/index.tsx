@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import styled from 'styled-components';
@@ -71,32 +71,40 @@ export function SyncPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [unsyncedRecords, setUnsyncedRecords] = useState<LocationRecord[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const { updateUnsyncedCount } = useSync();
 
-  // Adicionar intervalo de atualização
-  useEffect(() => {
-    const loadData = async () => {
-      await loadUnsyncedRecords();
-      loadLastSyncTime();
-    };
-
-    // Carregar dados inicialmente
-    loadData();
-
-    // Configurar intervalo de atualização
-    const interval = setInterval(loadData, 2000); // Atualiza a cada 2 segundos
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadUnsyncedRecords = async () => {
+  const loadUnsyncedRecords = async (page: number, append: boolean = false) => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
     try {
-      const records = await db.getUnsynced();
-      setUnsyncedRecords(records);
+      const records = await db.getUnsynced(page);
+      const totalCount = await db.getUnsyncedCount();
+      
+      setUnsyncedRecords(prev => append ? [...prev, ...records] : records);
+      setHasMore(records.length > 0 && unsyncedRecords.length < totalCount);
     } catch (error) {
       console.error('Erro ao carregar registros:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight * 1.5 && hasMore && !isLoading) {
+      setCurrentPage(prev => prev + 1);
+      loadUnsyncedRecords(currentPage + 1, true);
+    }
+  }, [hasMore, isLoading, currentPage]);
+
+  useEffect(() => {
+    loadUnsyncedRecords(1);
+    loadLastSyncTime();
+  }, []);
 
   const loadLastSyncTime = () => {
     const lastSyncTime = localStorage.getItem('lastSyncTime');
@@ -114,7 +122,7 @@ export function SyncPage() {
         const now = new Date().toISOString();
         localStorage.setItem('lastSyncTime', now);
         setLastSync(now);
-        await loadUnsyncedRecords();
+        await loadUnsyncedRecords(1);
         await updateUnsyncedCount();
       } else {
         throw new Error(result.error);
@@ -137,7 +145,7 @@ export function SyncPage() {
       const records = await db.getUnsynced();
       const ids = records.map(record => record.id!);
       await db.deleteRecords(ids);
-      await loadUnsyncedRecords();
+      await loadUnsyncedRecords(1);
       await updateUnsyncedCount();
     } catch (error) {
       console.error('Erro ao excluir registros:', error);
@@ -147,8 +155,6 @@ export function SyncPage() {
     }
   };
 
-  const latestRecord = unsyncedRecords[0];
-
   // Função auxiliar para formatar números com segurança
   const safeToFixed = (num: number | undefined | null, decimals: number = 2): string => {
     if (num === undefined || num === null) return '0';
@@ -157,7 +163,7 @@ export function SyncPage() {
 
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.content}>
+      <div className={styles.content} onScroll={handleScroll}>
         <SyncHeader 
           onSync={handleSync} 
           onDelete={handleDeleteUnsynced} 
@@ -170,42 +176,44 @@ export function SyncPage() {
           <div className={styles.syncStatus}>
             {unsyncedRecords.length === 0 ? (
               <p className={styles.emptyMessage}>Nenhuma sincronização pendente</p>
-            ) : latestRecord ? (
-              <div className={styles.recordDetails}>
-                <div className={styles.detailItem}>
-                  <MapPinIcon className={styles.icon} />
-                  <span className={styles.label}>Localização:</span>
-                  <span className={styles.value}>
-                    {safeToFixed(latestRecord?.latitude, 6)}, {safeToFixed(latestRecord?.longitude, 6)}
-                  </span>
-                </div>
-                
-                <div className={styles.detailItem}>
-                  <ChartBarIcon className={styles.icon} />
-                  <span className={styles.label}>Velocidade:</span>
-                  <span className={styles.value}>
-                    {safeToFixed(latestRecord?.speed, 1)} km/h
-                  </span>
-                </div>
-                
-                <div className={styles.detailItem}>
-                  <ClockIcon className={styles.icon} />
-                  <span className={styles.label}>Data:</span>
-                  <span className={styles.value}>
-                    {latestRecord?.timestamp 
-                      ? new Date(latestRecord.timestamp).toLocaleString() 
-                      : '-'}
-                  </span>
-                </div>
-
-                {unsyncedRecords.length > 1 && (
-                  <p className={styles.pendingCount}>
-                    + {unsyncedRecords.length - 1} {unsyncedRecords.length - 1 === 1 ? 'registro pendente' : 'registros pendentes'}
-                  </p>
-                )}
-              </div>
             ) : (
-              <p className={styles.emptyMessage}>Erro ao carregar dados</p>
+              <>
+                {unsyncedRecords.map((record, index) => (
+                  <div key={record.id} className={styles.recordItem}>
+                    <div className={styles.recordDetails}>
+                      <div className={styles.detailItem}>
+                        <MapPinIcon className={styles.icon} />
+                        <span className={styles.label}>Localização:</span>
+                        <span className={styles.value}>
+                          {safeToFixed(record.latitude, 6)}, {safeToFixed(record.longitude, 6)}
+                        </span>
+                      </div>
+                      
+                      <div className={styles.detailItem}>
+                        <ChartBarIcon className={styles.icon} />
+                        <span className={styles.label}>Velocidade:</span>
+                        <span className={styles.value}>
+                          {safeToFixed(record.speed, 1)} km/h
+                        </span>
+                      </div>
+                      
+                      <div className={styles.detailItem}>
+                        <ClockIcon className={styles.icon} />
+                        <span className={styles.label}>Data:</span>
+                        <span className={styles.value}>
+                          {record.timestamp ? new Date(record.timestamp).toLocaleString() : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {isLoading && (
+                  <div className={styles.loadingMore}>
+                    Carregando mais registros...
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
