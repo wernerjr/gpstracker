@@ -6,6 +6,7 @@ import { SyncPage } from './pages/SyncPage';
 import { TrackingProvider } from './contexts/TrackingContext';
 import { SyncProvider } from './contexts/SyncContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './contexts/ToastContext';
 
 export function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -26,32 +27,34 @@ export function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <SyncProvider>
-          <TrackingProvider>
-            <div className="App">
-              {!isOnline && (
-                <div style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#e74c3c',
-                  color: 'white',
-                  textAlign: 'center',
-                  padding: '8px',
-                  zIndex: 9999
-                }}>
-                  Você está offline. Usando versão em cache.
-                </div>
-              )}
-              <Header />
-              <Routes>
-                <Route path="/" element={<Tracker />} />
-                <Route path="/sync" element={<SyncPage />} />
-              </Routes>
-            </div>
-          </TrackingProvider>
-        </SyncProvider>
+        <ToastProvider>
+          <SyncProvider>
+            <TrackingProvider>
+              <div className="App">
+                {!isOnline && (
+                  <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#e74c3c',
+                    color: 'white',
+                    textAlign: 'center',
+                    padding: '8px',
+                    zIndex: 9999
+                  }}>
+                    Você está offline. Usando versão em cache.
+                  </div>
+                )}
+                <Header />
+                <Routes>
+                  <Route path="/" element={<Tracker />} />
+                  <Route path="/sync" element={<SyncPage />} />
+                </Routes>
+              </div>
+            </TrackingProvider>
+          </SyncProvider>
+        </ToastProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

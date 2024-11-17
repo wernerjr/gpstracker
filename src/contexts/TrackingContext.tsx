@@ -5,6 +5,7 @@ import type { LocationData, LocationRecord } from '../types/common';
 import { useSync } from './SyncContext';
 import { GPS_CONFIG } from '../constants';
 import { emitNewLocationRecord } from '../utils/events';
+import { useToast } from '../hooks/useToast';
 
 interface TrackingContextData {
   isTracking: boolean;
@@ -20,6 +21,7 @@ interface TrackingContextData {
 const TrackingContext = createContext<TrackingContextData>({} as TrackingContextData);
 
 export function TrackingProvider({ children }: { children: React.ReactNode }) {
+  const { showToast } = useToast();
   const [isTracking, setIsTracking] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [averageSpeed, setAverageSpeed] = useState(0);
@@ -104,27 +106,40 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
   };
 
   const startTracking = useCallback(async () => {
-    const hasPermission = await checkGPSPermissions();
-    if (!hasPermission) {
-      throw new Error('Permissão de GPS negada');
+    try {
+      const hasPermission = await checkGPSPermissions();
+      if (!hasPermission) {
+        showToast('Permissão de GPS negada', 'error');
+        return;
+      }
+      
+      setCurrentSpeed(0);
+      setAverageSpeed(0);
+      setMaxSpeed(0);
+      speedReadings.current = [];
+      trackingGuid.current = v4();
+      setIsTracking(true);
+      showToast('Rastreamento iniciado', 'success');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      showToast(`Erro ao iniciar rastreamento: ${errorMessage}`, 'error');
     }
-    
-    setCurrentSpeed(0);
-    setAverageSpeed(0);
-    setMaxSpeed(0);
-    speedReadings.current = [];
-    trackingGuid.current = v4();
-    setIsTracking(true);
-  }, []);
+  }, [showToast]);
 
   const stopTracking = useCallback(() => {
-    if (watchId.current !== null) {
-      navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
+    try {
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
+      setIsTracking(false);
+      trackingGuid.current = null;
+      showToast('Rastreamento finalizado', 'success');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      showToast(`Erro ao parar rastreamento: ${errorMessage}`, 'error');
     }
-    setIsTracking(false);
-    trackingGuid.current = null;
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (!watchId.current) {

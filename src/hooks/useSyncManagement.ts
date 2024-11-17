@@ -6,6 +6,7 @@ import { LocationRecord } from '../types/common';
 import { EVENTS } from '../utils/events';
 import styles from '../pages/SyncPage/styles.module.css';
 import { SyncResult } from '../types/sync';
+import { useToast } from '../hooks/useToast';
 
 interface SyncManagementReturn {
   unsyncedRecords: LocationRecord[];
@@ -28,6 +29,7 @@ export const useSyncManagement = (): SyncManagementReturn => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const { updateUnsyncedCount } = useSync();
+  const { showToast } = useToast();
 
   const loadUnsyncedRecords = async (page: number, append: boolean = false) => {
     if (isLoading) return;
@@ -51,6 +53,7 @@ export const useSyncManagement = (): SyncManagementReturn => {
 
   const handleSync = async (): Promise<SyncResult> => {
     if (isSyncing) {
+      showToast('Sincronização em andamento', 'error');
       return { success: false, error: 'Sincronização em andamento' };
     }
 
@@ -63,13 +66,17 @@ export const useSyncManagement = (): SyncManagementReturn => {
         localStorage.setItem('lastSyncTime', now);
         await loadUnsyncedRecords(1);
         await updateUnsyncedCount();
+        showToast(`${result.syncedCount} registros sincronizados com sucesso!`, 'success');
+      } else {
+        showToast(`Erro na sincronização: ${result.error}`, 'error');
       }
       return result;
     } catch (error) {
-      console.error('Erro na sincronização:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      showToast(`Erro na sincronização: ${errorMessage}`, 'error');
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: errorMessage
       };
     } finally {
       setIsSyncing(false);
@@ -127,12 +134,14 @@ export const useSyncManagement = (): SyncManagementReturn => {
       await db.deleteRecord(id);
       await loadUnsyncedRecords(1);
       await updateUnsyncedCount();
+      showToast('Registro excluído com sucesso!', 'success');
     } catch (error) {
-      console.error('Erro ao excluir registro:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      showToast(`Erro ao excluir registro: ${errorMessage}`, 'error');
     } finally {
       setIsDeleting(false);
     }
-  }, [isDeleting, loadUnsyncedRecords, updateUnsyncedCount]);
+  }, [isDeleting, loadUnsyncedRecords, updateUnsyncedCount, showToast]);
 
   const handleDeleteUnsynced = useCallback(async () => {
     if (isDeleting) return;
@@ -144,12 +153,14 @@ export const useSyncManagement = (): SyncManagementReturn => {
       await db.deleteRecords(ids);
       await loadUnsyncedRecords(1);
       await updateUnsyncedCount();
+      showToast('Registros excluídos com sucesso!', 'success');
     } catch (error) {
-      console.error('Erro ao excluir registros:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      showToast(`Erro ao excluir registros: ${errorMessage}`, 'error');
     } finally {
       setIsDeleting(false);
     }
-  }, [isDeleting, loadUnsyncedRecords, updateUnsyncedCount]);
+  }, [isDeleting, loadUnsyncedRecords, updateUnsyncedCount, showToast]);
 
   return {
     unsyncedRecords,
