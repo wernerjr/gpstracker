@@ -1,48 +1,63 @@
 import { useState, useCallback } from 'react';
+import { ArrowPathIcon } from '@heroicons/react/24/solid';
 
 const UpdateButton = () => {
-  const [checking, setChecking] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   const checkForUpdates = useCallback(async () => {
-    if (checking) return;
+    if (isSpinning) return;
 
+    setIsSpinning(true);
+    
     try {
-      setChecking(true);
-
       if (!('serviceWorker' in navigator)) {
         throw new Error('Service Worker não é suportado');
       }
 
-      // Registra o service worker
       const registration = await navigator.serviceWorker.register('/service-worker.js');
-      console.log('Service Worker registrado com sucesso');
-
-      // Força atualização
       await registration.update();
       console.log('Service Worker atualizado');
 
     } catch (error) {
       console.error('Erro:', error);
-      alert('Erro ao verificar atualizações');
-    } finally {
-      setChecking(false);
     }
-  }, [checking]);
+    
+    // Aguarda 1 segundo antes de parar a animação
+    setTimeout(() => {
+      setIsSpinning(false);
+    }, 1000);
+    
+  }, [isSpinning]);
 
   return (
     <button 
       onClick={checkForUpdates}
-      disabled={checking}
+      disabled={isSpinning}
+      title="Atualizar Service Worker"
       style={{
-        padding: '8px 16px',
-        backgroundColor: '#1976d2',
-        color: 'white',
+        background: 'transparent',
         border: 'none',
-        borderRadius: '4px',
-        cursor: checking ? 'not-allowed' : 'pointer'
+        padding: '4px',
+        cursor: isSpinning ? 'not-allowed' : 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: isSpinning ? 0.5 : 0.7,
+        transition: 'opacity 0.2s ease',
       }}
+      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
     >
-      {checking ? 'Verificando...' : 'Verificar Atualizações'}
+      <ArrowPathIcon 
+        style={{ 
+          width: '16px', 
+          height: '16px',
+          color: '#fff',
+          animation: isSpinning ? 'spin 1s linear' : 'none',
+          // Garante que a animação pare na posição inicial
+          transform: isSpinning ? undefined : 'rotate(0deg)'
+        }} 
+      />
     </button>
   );
 };

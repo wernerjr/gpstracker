@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import styled from 'styled-components';
-import { TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, ArrowPathIcon, MapPinIcon, ChartBarIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { db, LocationRecord } from '../../services/localDatabase';
 import { syncLocations } from '../../services/syncService';
 import { useSync } from '../../contexts/SyncContext';
+import styles from './styles.module.css';
 
 export function SyncPage() {
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -84,218 +85,73 @@ export function SyncPage() {
     }
   };
 
+  // Pega o registro mais recente para exibição
+  const latestRecord = unsyncedRecords[0];
+
   return (
-    <PageContainer>
-      <ContentWrapper>
-        <Header>
-          <Title>Sincronização</Title>
-          <ButtonGroup>
-            <ActionButton 
-              $primary
+    <div className={styles.pageContainer}>
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Sincronização</h1>
+          <div className={styles.buttonGroup}>
+            <button 
               onClick={handleSync} 
               disabled={isSyncing || unsyncedRecords.length === 0}
+              className={styles.syncButton}
             >
-              {isSyncing ? (
-                <>
-                  <ArrowPathIcon 
-                    width={20} 
-                    height={20} 
-                    className="animate-spin" 
-                  />
-                  <span>Sincronizando...</span>
-                </>
-              ) : (
-                <>
-                  <ArrowPathIcon width={20} height={20} />
-                  <span>Sincronizar Agora</span>
-                </>
-              )}
-            </ActionButton>
+              <ArrowPathIcon className={`${styles.icon} ${isSyncing ? styles.spinning : ''}`} />
+              Sincronizar Agora
+            </button>
             
-            <ActionButton
-              $danger
+            <button
               onClick={handleDeleteUnsynced}
               disabled={isDeleting || unsyncedRecords.length === 0}
+              className={styles.deleteButton}
             >
-              {isDeleting ? (
-                'Excluindo...'
-              ) : (
-                <>
-                  <TrashIcon width={20} height={20} />
-                  <span>Excluir Registros</span>
-                </>
-              )}
-            </ActionButton>
-          </ButtonGroup>
-        </Header>
+              <TrashIcon className={styles.icon} />
+              Excluir Registros
+            </button>
+          </div>
+        </div>
 
-        <LastSyncInfo>
-          {lastSync ? (
-            <>
-              Última sincronização: {format(
-                new Date(lastSync),
-                "dd 'de' MMMM 'às' HH:mm",
-                { locale: ptBR }
-              )}
-            </>
-          ) : (
-            'Nenhuma sincronização realizada'
-          )}
-        </LastSyncInfo>
+        <div className={styles.syncCard}>
+          <div className={styles.syncStatus}>
+            {unsyncedRecords.length === 0 ? (
+              <p className={styles.emptyMessage}>Nenhuma sincronização pendente</p>
+            ) : (
+              <div className={styles.recordDetails}>
+                <div className={styles.detailItem}>
+                  <MapPinIcon className={styles.icon} />
+                  <span className={styles.label}>Localização:</span>
+                  <span className={styles.value}>
+                    {latestRecord?.latitude.toFixed(6)}, {latestRecord?.longitude.toFixed(6)}
+                  </span>
+                </div>
+                
+                <div className={styles.detailItem}>
+                  <ChartBarIcon className={styles.icon} />
+                  <span className={styles.label}>Velocidade:</span>
+                  <span className={styles.value}>{latestRecord?.speed.toFixed(1)} km/h</span>
+                </div>
+                
+                <div className={styles.detailItem}>
+                  <ClockIcon className={styles.icon} />
+                  <span className={styles.label}>Data:</span>
+                  <span className={styles.value}>
+                    {latestRecord?.timestamp ? new Date(latestRecord.timestamp).toLocaleString() : '-'}
+                  </span>
+                </div>
 
-        {unsyncedRecords.length > 0 ? (
-          <RecordsList>
-            {unsyncedRecords.map((record) => (
-              <RecordItem key={record.id}>
-                <RecordInfo>
-                  <strong>Localização:</strong> 
-                  {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
-                </RecordInfo>
-                <RecordInfo>
-                  <strong>Velocidade:</strong> 
-                  {record.speed.toFixed(1)} km/h
-                </RecordInfo>
-                <RecordInfo>
-                  <strong>Data:</strong> 
-                  {format(new Date(record.timestamp), "dd/MM/yyyy HH:mm:ss")}
-                </RecordInfo>
-              </RecordItem>
-            ))}
-          </RecordsList>
-        ) : (
-          <NoRecords>
-            Não há registros pendentes de sincronização
-          </NoRecords>
-        )}
-      </ContentWrapper>
-    </PageContainer>
+                {unsyncedRecords.length > 1 && (
+                  <p className={styles.pendingCount}>
+                    + {unsyncedRecords.length - 1} {unsyncedRecords.length - 1 === 1 ? 'registro pendente' : 'registros pendentes'}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
-}
-
-const PageContainer = styled.div`
-  min-height: 100vh;
-  background-color: #1a1a1a;
-  padding: 2rem 1rem;
-`;
-
-const ContentWrapper = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
-  background-color: #2d2d2d;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  
-  @media (max-width: 600px) {
-    flex-direction: column;
-    gap: 1rem;
-  }
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: white;
-  font-size: 2rem;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  
-  @media (max-width: 600px) {
-    width: 100%;
-    flex-direction: column;
-  }
-`;
-
-const ActionButton = styled.button<{ $primary?: boolean; $danger?: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 160px;
-  
-  background-color: ${props => 
-    props.$primary ? '#3498db' : 
-    props.$danger ? '#e74c3c' : '#7f8c8d'};
-  color: white;
-
-  &:hover {
-    background-color: ${props => 
-      props.$primary ? '#2980b9' : 
-      props.$danger ? '#c0392b' : '#95a5a6'};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  @media (max-width: 600px) {
-    width: 100%;
-  }
-`;
-
-const LastSyncInfo = styled.div`
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background-color: rgba(52, 152, 219, 0.1);
-  border-radius: 8px;
-  color: #7f8c8d;
-  text-align: center;
-`;
-
-const RecordsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const RecordItem = styled.div`
-  background-color: #363636;
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid rgba(52, 152, 219, 0.3);
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    border-color: #3498db;
-  }
-`;
-
-const RecordInfo = styled.div`
-  margin-bottom: 0.5rem;
-  color: #ecf0f1;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  strong {
-    color: #3498db;
-    margin-right: 0.5rem;
-  }
-`;
-
-const NoRecords = styled.div`
-  text-align: center;
-  padding: 3rem 2rem;
-  color: #7f8c8d;
-  background-color: #363636;
-  border-radius: 8px;
-  border: 1px dashed rgba(127, 140, 141, 0.3);
-`; 
+} 

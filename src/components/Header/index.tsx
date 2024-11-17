@@ -24,9 +24,7 @@ export function Header() {
           >
             <FaSatelliteDish className={styles.navIcon} />
             <span>Tracker</span>
-          </button>
-          
-          <UpdateButton />
+          </button>         
           
           <button
             className={`${styles.navButton} ${location.pathname === '/sync' ? styles.active : ''}`}

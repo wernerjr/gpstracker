@@ -1,5 +1,9 @@
 .container {
-  padding: 20px;
+  padding: 1rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  margin-top: 70px;
   background-color: #1a1a1a;
   min-height: 100vh;
   color: white;
@@ -158,4 +162,16 @@
   font-weight: bold;
   margin: 0;
   color: #888;
+}
+
+.updateButtonContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding: 1rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(26, 26, 26, 0.9) 50%);
 } 

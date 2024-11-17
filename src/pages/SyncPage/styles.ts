@@ -4,6 +4,7 @@ export const Container = styled.div`
   padding: 2rem;
   max-width: 800px;
   margin: 0 auto;
+  margin-top: 70px;
 `;
 
 export const SyncHeader = styled.div`
@@ -14,13 +15,13 @@ export const SyncHeader = styled.div`
 
   h1 {
     font-size: 1.5rem;
-    color: #1a1a1a;
+    color: #fff;
   }
 `;
 
 export const SyncButton = styled.button`
   background: #2563eb;
-  color: white;
+  color: white;s
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;

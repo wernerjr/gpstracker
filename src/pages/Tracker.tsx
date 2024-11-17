@@ -1,6 +1,7 @@
 import { useTracking } from '../contexts/TrackingContext';
 import styles from './Tracker.module.css';
 import { FaLocationArrow } from 'react-icons/fa';
+import UpdateButton from '../components/UpdateButton';
 
 export function Tracker() {
   const { 
@@ -48,7 +49,7 @@ export function Tracker() {
 
         <div className={styles.coordinatesCard}>
           <h3 className={styles.cardTitle}>Coordenadas</h3>
-          <p className={styles.coordinates}>
+          <p className={styles.cardValue}>
             {currentLocation 
               ? `${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
               : 'Aguardando...'}
@@ -60,6 +61,10 @@ export function Tracker() {
           <span className={styles.precisionText}>
             Precisão: {accuracy ? `${accuracy.toFixed(1)}m (${accuracy > 1000 ? 'Baixa' : 'Boa'})` : 'Indisponível'}
           </span>
+        </div>
+
+        <div className={styles.updateButtonContainer}>
+          <UpdateButton />
         </div>
       </div>
     </div>

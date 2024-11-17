@@ -21,6 +21,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: white;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .App {
@@ -49,4 +51,15 @@ code {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Esconde a barra de rolagem mas mantém a funcionalidade */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer e Edge */
+}
+
+/* Esconde a barra de rolagem do Chrome, Safari e Opera */
+html::-webkit-scrollbar {
+  display: none;
 }
