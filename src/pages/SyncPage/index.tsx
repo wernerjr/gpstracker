@@ -7,6 +7,64 @@ import { db, LocationRecord } from '../../services/localDatabase';
 import { syncLocations } from '../../services/syncService';
 import { useSync } from '../../contexts/SyncContext';
 import styles from './styles.module.css';
+import { Button } from '../../components/Button';
+
+// Extrair componentes menores
+interface SyncHeaderProps {
+  onSync: () => void;
+  onDelete: () => void;
+  isSyncing: boolean;
+  isDeleting: boolean;
+  hasRecords: boolean;
+}
+
+const SyncHeader: React.FC<SyncHeaderProps> = ({ 
+  onSync, 
+  onDelete, 
+  isSyncing, 
+  isDeleting, 
+  hasRecords 
+}) => (
+  <div className={styles.header}>
+    <h1 className={styles.title}>Sincronização</h1>
+    <div className={styles.buttonGroup}>
+      <Button 
+        onClick={onSync} 
+        disabled={isSyncing || !hasRecords}
+        icon={<ArrowPathIcon />}
+        variant="success"
+      >
+        Sincronizar
+      </Button>
+      <Button
+        onClick={onDelete}
+        disabled={isDeleting || !hasRecords}
+        icon={<TrashIcon />}
+        variant="danger"
+      >
+        Limpar
+      </Button>
+    </div>
+  </div>
+);
+
+// Usar hooks customizados para lógica de negócio
+const useSyncManagement = () => {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      // lógica de sincronização
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  return { isSyncing, lastSync, handleSync };
+};
 
 export function SyncPage() {
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -89,26 +147,13 @@ export function SyncPage() {
   return (
     <div className={styles.pageContainer}>
       <div className={styles.content}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Sincronização</h1>
-          <div className={styles.buttonGroup}>
-            <button 
-              onClick={handleSync} 
-              disabled={isSyncing || unsyncedRecords.length === 0}
-              className={styles.syncButton}
-            >
-              <ArrowPathIcon className={`${styles.icon} ${isSyncing ? styles.spinning : ''}`} />              
-            </button>
-            
-            <button
-              onClick={handleDeleteUnsynced}
-              disabled={isDeleting || unsyncedRecords.length === 0}
-              className={styles.deleteButton}
-            >
-              <TrashIcon className={styles.icon} />
-            </button>
-          </div>
-        </div>
+        <SyncHeader 
+          onSync={handleSync} 
+          onDelete={handleDeleteUnsynced} 
+          isSyncing={isSyncing} 
+          isDeleting={isDeleting} 
+          hasRecords={unsyncedRecords.length > 0}
+        />
 
         <div className={styles.syncCard}>
           <div className={styles.syncStatus}>

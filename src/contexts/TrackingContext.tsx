@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { v4 } from 'uuid';
 import { db, LocationRecord } from '../services/localDatabase';
 import { LocationData } from '../types/location';
 import { useSync } from './SyncContext';
+import { GPS_CONFIG } from '../constants';
 
 interface TrackingContextData {
   isTracking: boolean;
@@ -19,158 +20,117 @@ const TrackingContext = createContext<TrackingContextData>({} as TrackingContext
 
 export function TrackingProvider({ children }: { children: React.ReactNode }) {
   const [isTracking, setIsTracking] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
-  const [currentSpeed, setCurrentSpeed] = useState<number>(0);
-  const [averageSpeed, setAverageSpeed] = useState<number>(0);
-  const [maxSpeed, setMaxSpeed] = useState<number>(0);
+  const [currentSpeed, setCurrentSpeed] = useState(0);
+  const [averageSpeed, setAverageSpeed] = useState(0);
+  const [maxSpeed, setMaxSpeed] = useState(0);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   
   const watchId = useRef<number | null>(null);
   const trackingGuid = useRef<string | null>(null);
   const speedReadings = useRef<number[]>([]);
-  const lastSaveTime = useRef<number>(0);
-  const { updateUnsyncedCount } = useSync();
 
-  const SAVE_INTERVAL = 5000;
-
-  const saveLocation = useCallback(async (position: GeolocationPosition) => {
-    if (!trackingGuid.current || !isTracking) {
-      console.log('Ignorando salvamento: tracking não iniciado ou parado');
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastSaveTime.current < SAVE_INTERVAL) {
-      console.log('Ignorando salvamento: intervalo muito curto');
-      return;
-    }
-
-    try {
-      console.log('Salvando localização...', {
-        guid: trackingGuid.current,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude
-      });
-
-      const locationRecord: LocationRecord = {
-        guid: crypto.randomUUID(),
-        trackingId: trackingGuid.current,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        speed: position.coords.speed || 0,
-        accuracy: position.coords.accuracy || 0,
-        timestamp: new Date(position.timestamp),
-        synced: 0
-      };
-
-      await db.locations.add(locationRecord);
-      lastSaveTime.current = now;
-      updateUnsyncedCount();
-      
-      console.log('Localização salva com sucesso');
-    } catch (error) {
-      console.error('Erro ao salvar localização:', error);
-    }
-  }, [isTracking, updateUnsyncedCount]);
+  const calculateAverageSpeed = useCallback((speeds: number[]): number => {
+    if (speeds.length === 0) return 0;
+    const sum = speeds.reduce((acc, speed) => acc + speed, 0);
+    return sum / speeds.length;
+  }, []);
 
   const handlePositionUpdate = useCallback((position: GeolocationPosition) => {
-    const speed = position.coords.speed ? position.coords.speed * 3.6 : 0; // Convertendo para km/h
-    
-    // Atualiza velocidade atual
+    const speed = position.coords.speed ? position.coords.speed * 3.6 : 0;
     setCurrentSpeed(speed);
+    setAccuracy(position.coords.accuracy);
     
-    // Atualiza velocidade máxima se necessário
-    setMaxSpeed(prevMax => speed > prevMax ? speed : prevMax);
+    setMaxSpeed(prev => Math.max(prev, speed));
     
-    // Adiciona à lista de velocidades e calcula média
     speedReadings.current.push(speed);
-    setAverageSpeed(calculateAverageSpeed(speedReadings.current));
+    const avgSpeed = calculateAverageSpeed(speedReadings.current);
+    setAverageSpeed(avgSpeed);
     
     setCurrentLocation({
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
-      speed: speed,
+      speed,
       timestamp: position.timestamp
     });
+  }, [calculateAverageSpeed]);
+
+  const checkGPSPermissions = async (): Promise<boolean> => {
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' });
+      return result.state === 'granted';
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+      return false;
+    }
+  };
+
+  const startTracking = useCallback(async () => {
+    const hasPermission = await checkGPSPermissions();
+    if (!hasPermission) {
+      throw new Error('Permissão de GPS negada');
+    }
     
-    setAccuracy(position.coords.accuracy || null);
-
-    saveLocation(position);
-  }, [saveLocation]);
-
-  const startTracking = useCallback(() => {
-    // Reseta todos os valores ao iniciar novo rastreamento
     setCurrentSpeed(0);
     setAverageSpeed(0);
     setMaxSpeed(0);
     speedReadings.current = [];
-    
+    trackingGuid.current = v4();
     setIsTracking(true);
-    trackingGuid.current = crypto.randomUUID();
-
-    watchId.current = navigator.geolocation.watchPosition(
-      handlePositionUpdate,
-      (error) => console.error('Erro de GPS:', error),
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-      }
-    );
-  }, [handlePositionUpdate]);
+  }, []);
 
   const stopTracking = useCallback(() => {
-    console.log('Parando rastreamento...');
     if (watchId.current !== null) {
       navigator.geolocation.clearWatch(watchId.current);
       watchId.current = null;
     }
     setIsTracking(false);
     trackingGuid.current = null;
-    console.log('Rastreamento parado');
   }, []);
 
   useEffect(() => {
     if (!watchId.current) {
-      console.log('Iniciando monitoramento GPS');
       watchId.current = navigator.geolocation.watchPosition(
         handlePositionUpdate,
         (error) => console.error('Erro no GPS:', error),
         {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
+          enableHighAccuracy: GPS_CONFIG.HIGH_ACCURACY,
+          timeout: GPS_CONFIG.TIMEOUT,
+          maximumAge: GPS_CONFIG.MAX_AGE
         }
       );
     }
 
     return () => {
       if (watchId.current) {
-        console.log('Limpando monitoramento GPS');
         navigator.geolocation.clearWatch(watchId.current);
         watchId.current = null;
       }
     };
   }, [handlePositionUpdate]);
 
-  // Função para calcular a média das velocidades
-  const calculateAverageSpeed = (speeds: number[]): number => {
-    if (speeds.length === 0) return 0;
-    const sum = speeds.reduce((acc, speed) => acc + speed, 0);
-    return sum / speeds.length;
-  };
+  const value = useMemo(() => ({
+    isTracking,
+    startTracking,
+    stopTracking,
+    currentSpeed,
+    averageSpeed,
+    maxSpeed,
+    accuracy,
+    currentLocation
+  }), [
+    isTracking,
+    startTracking,
+    stopTracking,
+    currentSpeed,
+    averageSpeed,
+    maxSpeed,
+    accuracy,
+    currentLocation
+  ]);
 
   return (
-    <TrackingContext.Provider value={{
-      isTracking,
-      startTracking,
-      stopTracking,
-      currentSpeed,
-      averageSpeed,
-      maxSpeed,
-      accuracy,
-      currentLocation
-    }}>
+    <TrackingContext.Provider value={value}>
       {children}
     </TrackingContext.Provider>
   );

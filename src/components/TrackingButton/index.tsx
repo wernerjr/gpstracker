@@ -12,9 +12,12 @@ export function TrackingButton({ isTracking, onStartTracking, onStopTracking }: 
     <button 
       onClick={isTracking ? onStopTracking : onStartTracking}
       className={`${styles.trackingButton} ${isTracking ? styles.stopping : ''}`}
+      aria-label={isTracking ? 'Parar rastreamento' : 'Iniciar rastreamento'}
+      role="switch"
+      aria-checked={isTracking}
     >
-      <FaLocationArrow className={styles.buttonIcon} />
-      {isTracking ? 'Parar Rastreamento' : 'Iniciar Rastreamento'}
+      <FaLocationArrow className={styles.buttonIcon} aria-hidden="true" />
+      <span>{isTracking ? 'Parar Rastreamento' : 'Iniciar Rastreamento'}</span>
     </button>
   );
 } 

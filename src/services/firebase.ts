@@ -2,9 +2,9 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC0Qkyd8fE-M7GoOgQ5pdLH-nvkFgjW1eE",
-  authDomain: "gps-tracker-9c484.firebaseapp.com",
-  projectId: "gps-tracker-9c484",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
   storageBucket: "gps-tracker-9c484.firebasestorage.app",
   messagingSenderId: "139775082890",
   appId: "1:139775082890:web:4b57d43e70249b6c540873",

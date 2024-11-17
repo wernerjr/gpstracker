@@ -1,0 +1,49 @@
+.button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.success {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.success:hover:not(:disabled) {
+  background-color: #27ae60;
+}
+
+.danger {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.danger:hover:not(:disabled) {
+  background-color: #c0392b;
+}
+
+.default {
+  background-color: #3498db;
+  color: white;
+}
+
+.default:hover:not(:disabled) {
+  background-color: #2980b9;
+} 
