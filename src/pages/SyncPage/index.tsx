@@ -73,9 +73,20 @@ export function SyncPage() {
   const [unsyncedRecords, setUnsyncedRecords] = useState<LocationRecord[]>([]);
   const { updateUnsyncedCount } = useSync();
 
+  // Adicionar intervalo de atualização
   useEffect(() => {
-    loadUnsyncedRecords();
-    loadLastSyncTime();
+    const loadData = async () => {
+      await loadUnsyncedRecords();
+      loadLastSyncTime();
+    };
+
+    // Carregar dados inicialmente
+    loadData();
+
+    // Configurar intervalo de atualização
+    const interval = setInterval(loadData, 2000); // Atualiza a cada 2 segundos
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadUnsyncedRecords = async () => {
