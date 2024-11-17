@@ -1,57 +1,48 @@
-import { writeBatch, collection, doc, Timestamp } from 'firebase/firestore';
-import { firestore } from '../config/firebase';
+import { collection, writeBatch, doc } from 'firebase/firestore';
+import { firestore } from './firebase';
 import { db } from './localDatabase';
-import type { LocationRecord } from './localDatabase';
-import type { SyncResult } from '../types/sync';
+import { LocationRecord, SyncResult } from '../types/common';
+import { BATCH_SIZE } from '../constants';
 
 const uploadLocations = async (records: LocationRecord[]): Promise<SyncResult> => {
-  const BATCH_SIZE = 500;
-  let totalSynced = 0;
-  let currentBatch: LocationRecord[] = [];
-  let processedIds: number[] = [];
-
+  let syncedCount = 0;
+  
   try {
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = writeBatch(firestore);
-      currentBatch = records.slice(i, i + BATCH_SIZE);
-      const trackerRef = collection(firestore, 'locations');
-
-      currentBatch.forEach(record => {
-        if (!record.id) return;
-        
-        const docRef = doc(trackerRef);
+      const batchRecords = records.slice(i, i + BATCH_SIZE);
+      
+      for (const record of batchRecords) {
+        const docRef = doc(collection(firestore, 'locations'));
         batch.set(docRef, {
           guid: record.guid,
-          trackingId: record.trackingId,
+          trackingId: record.trackingId || null,
           latitude: record.latitude,
           longitude: record.longitude,
           accuracy: record.accuracy,
           speed: record.speed,
-          timestamp: Timestamp.fromDate(new Date(record.timestamp)),
-          createdAt: Timestamp.now()
+          timestamp: record.timestamp
         });
-        
-        processedIds.push(record.id);
-      });
+      }
 
       await batch.commit();
       
-      if (processedIds.length > 0) {
-        await db.deleteRecords(processedIds);
-        totalSynced += processedIds.length;
-        processedIds = [];
-      }
+      // Marcar registros como sincronizados
+      const ids = batchRecords.map(r => r.id).filter((id): id is number => id !== undefined);
+      await db.markAsSynced(ids);
+      
+      syncedCount += batchRecords.length;
     }
 
     return {
       success: true,
-      syncedCount: totalSynced
+      syncedCount
     };
   } catch (error) {
-    console.error('Erro no upload:', error);
+    console.error('Erro ao fazer upload:', error);
     return {
       success: false,
-      syncedCount: totalSynced,
+      syncedCount,
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     };
   }

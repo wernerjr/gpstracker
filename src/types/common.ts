@@ -8,8 +8,9 @@ export interface LocationData {
 export interface LocationRecord extends LocationData {
   id?: number;
   guid: string;
+  trackingId?: string;
   accuracy: number;
-  synced: boolean;
+  synced: number;
 }
 
 export interface TrackingContextData {

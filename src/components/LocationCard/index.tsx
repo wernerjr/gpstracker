@@ -19,11 +19,18 @@ export function LocationCard({ latitude, longitude, accuracy }: LocationCardProp
     return styles.accuracyHigh;
   };
 
+  const formatCoordinate = (value: number | null) => {
+    if (value === null) return '-';
+    return value.toFixed(6);
+  };
+
   return (
     <div className={styles.coordinatesCard}>
       <div className={styles.speedLabel}>Coordenadas</div>
       <div className={styles.coordinatesValue}>
-        {latitude && longitude ? `${latitude}, ${longitude}` : '-'}
+        {latitude !== null && longitude !== null 
+          ? `${formatCoordinate(latitude)}, ${formatCoordinate(longitude)}` 
+          : 'Obtendo localização...'}
       </div>
       {accuracy && (
         <div className={styles.accuracy}>

@@ -3,11 +3,13 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import styled from 'styled-components';
 import { TrashIcon, ArrowPathIcon, MapPinIcon, ChartBarIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { db, LocationRecord } from '../../services/localDatabase';
+import { db } from '../../services/localDatabase';
+import type { LocationRecord } from '../../types/common';
 import { syncLocations } from '../../services/syncService';
 import { useSync } from '../../contexts/SyncContext';
 import styles from './styles.module.css';
 import { Button } from '../../components/Button';
+import { EVENTS } from '../../utils/events';
 
 // Extrair componentes menores
 interface SyncHeaderProps {
@@ -110,6 +112,18 @@ export function SyncPage() {
   useEffect(() => {
     loadUnsyncedRecords(1);
     loadLastSyncTime();
+  }, []);
+
+  useEffect(() => {
+    const handleNewRecord = () => {
+      loadUnsyncedRecords(1);
+    };
+
+    window.addEventListener(EVENTS.NEW_LOCATION_RECORD, handleNewRecord);
+
+    return () => {
+      window.removeEventListener(EVENTS.NEW_LOCATION_RECORD, handleNewRecord);
+    };
   }, []);
 
   const loadLastSyncTime = () => {

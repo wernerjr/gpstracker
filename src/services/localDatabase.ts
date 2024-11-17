@@ -1,28 +1,19 @@
-import Dexie, { Table } from 'dexie';
+import Dexie from 'dexie';
+import type { LocationRecord } from '../types/common';
 
-export interface LocationRecord {
-  id?: number;
-  guid: string;
-  trackingId: string;
-  latitude: number;
-  longitude: number;
-  accuracy: number;
-  speed: number;
-  timestamp: Date;
-  synced?: number;
-}
+export type { LocationRecord };
 
 class LocationDatabase extends Dexie {
-  locations!: Table<LocationRecord>;
+  locations!: Dexie.Table<LocationRecord, number>;
 
   constructor() {
     super('LocationDatabase');
-    this.version(2).stores({
-      locations: '++id, guid, trackingId, synced, timestamp'
+    this.version(1).stores({
+      locations: '++id, guid, timestamp, synced'
     });
   }
 
-  async addLocation(data: Omit<LocationRecord, 'id' | 'synced'>) {
+  async addLocation(data: Omit<LocationRecord, 'id' | 'synced'>): Promise<number> {
     return await this.locations.add({
       ...data,
       synced: 0
@@ -57,11 +48,12 @@ class LocationDatabase extends Dexie {
       .count();
   }
 
-  async markAsSynced(ids: number[]) {
-    await this.locations
-      .where('id')
-      .anyOf(ids)
-      .modify({ synced: 1 });
+  async markAsSynced(ids: number[]): Promise<void> {
+    await Promise.all(
+      ids.map(id => 
+        this.locations.update(id, { synced: 1 })
+      )
+    );
   }
 
   async deleteRecords(ids: number[]) {
