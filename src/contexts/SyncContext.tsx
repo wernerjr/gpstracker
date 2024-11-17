@@ -1,16 +1,9 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { syncLocations } from '../services/syncService';
 import { db } from '../services/localDatabase';
+import { SyncContextData, SyncResult } from '../types/common';
 
-interface SyncContextData {
-  unsyncedCount: number;
-  updateUnsyncedCount: (count?: number) => void;
-  isSyncing: boolean;
-  syncData: () => Promise<{ success: boolean; syncedCount: number; error?: string }>;
-  getUnsyncedRecords: () => Promise<any[]>;
-}
-
-const SyncContext = createContext<SyncContextData>({} as SyncContextData);
+const SyncContext = createContext<SyncContextData | null>(null);
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [unsyncedCount, setUnsyncedCount] = useState(0);
@@ -29,8 +22,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     return await db.getUnsynced();
   }, []);
 
-  const syncData = useCallback(async () => {
-    if (isSyncing) return { success: false, syncedCount: 0, error: 'Sincronização em andamento' };
+  const syncData = useCallback(async (): Promise<SyncResult> => {
+    if (isSyncing) {
+      return { 
+        success: false, 
+        syncedCount: 0, 
+        error: 'Sincronização em andamento' 
+      };
+    }
 
     setIsSyncing(true);
     try {
@@ -42,20 +41,22 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isSyncing, updateUnsyncedCount]);
 
+  const value = {
+    unsyncedCount,
+    updateUnsyncedCount,
+    isSyncing,
+    syncData,
+    getUnsyncedRecords
+  };
+
   return (
-    <SyncContext.Provider value={{ 
-      unsyncedCount, 
-      updateUnsyncedCount, 
-      isSyncing, 
-      syncData,
-      getUnsyncedRecords 
-    }}>
+    <SyncContext.Provider value={value}>
       {children}
     </SyncContext.Provider>
   );
 }
 
-export function useSync() {
+export function useSync(): SyncContextData {
   const context = useContext(SyncContext);
   if (!context) {
     throw new Error('useSync must be used within a SyncProvider');
