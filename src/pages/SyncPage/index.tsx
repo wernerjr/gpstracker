@@ -155,6 +155,21 @@ export function SyncPage() {
     }
   };
 
+  const handleDeleteRecord = async (id: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este registro?')) {
+      return;
+    }
+
+    try {
+      await db.deleteRecord(id);
+      await loadUnsyncedRecords(1);
+      await updateUnsyncedCount();
+    } catch (error) {
+      console.error('Erro ao excluir registro:', error);
+      alert('Erro ao excluir registro');
+    }
+  };
+
   // Função auxiliar para formatar números com segurança
   const safeToFixed = (num: number | undefined | null, decimals: number = 2): string => {
     if (num === undefined || num === null) return '0';
@@ -224,6 +239,13 @@ export function SyncPage() {
                         </span>
                       </div>
                     </div>
+                    <button 
+                      onClick={() => handleDeleteRecord(record.id!)}
+                      className={styles.deleteButton}
+                      title="Excluir registro"
+                    >
+                      <TrashIcon className={styles.deleteIcon} />
+                    </button>
                   </div>
                 ))}
                 

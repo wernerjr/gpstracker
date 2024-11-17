@@ -147,8 +147,12 @@
 }
 
 .recordItem {
+  position: relative;
   padding: 1rem;
   border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .recordItem:last-child {
@@ -172,4 +176,22 @@
 
 .accuracyHigh {
   color: #e74c3c !important;
+}
+
+.deleteButton {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.deleteButton:hover {
+  color: #e74c3c;
+}
+
+.deleteIcon {
+  width: 20px;
+  height: 20px;
 } 

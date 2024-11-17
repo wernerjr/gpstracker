@@ -85,6 +85,16 @@ class LocationDatabase extends Dexie {
       throw error;
     }
   }
+
+  async deleteRecord(id: number) {
+    try {
+      await this.locations.delete(id);
+      console.log('Registro excluído com sucesso:', id);
+    } catch (error) {
+      console.error('Erro ao excluir registro:', error);
+      throw error;
+    }
+  }
 }
 
 export const db = new LocationDatabase(); 
