@@ -7,6 +7,8 @@
   background-color: #1a1a1a;
   min-height: 100vh;
   color: white;
+  position: relative;
+  padding-bottom: 80px;
 }
 
 .content {
@@ -14,7 +16,7 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .trackingButton {
@@ -55,123 +57,150 @@
   transition: transform 0.3s ease;
 }
 
-.trackingButton:hover .buttonIcon {
-  transform: rotate(45deg);
-}
-
-.trackingButton.stopping .buttonIcon {
-  transform: rotate(45deg);
-}
-
-.trackingButton.stopping:hover .buttonIcon {
-  transform: rotate(0deg);
-}
-
 .cardsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
 .card {
-  background-color: #2a2a2a;
-  padding: 2rem;
-  border-radius: 20px;
+  background-color: #2d2d2d;
+  padding: 1.5rem;
+  border-radius: 12px;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease;
-}
-
-.card:hover {
-  transform: translateY(-5px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .cardTitle {
+  font-size: 0.9rem;
   color: #888;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
 }
 
 .cardValue {
   font-size: 2rem;
-  font-weight: bold;
-  margin: 0;
-  color: #2ecc71;
+  font-weight: 600;
+  color: white;
 }
 
 .unit {
   font-size: 1rem;
+  color: #888;
+}
+
+.unknown {
+  color: #888;
+}
+
+.low {
+  color: #e74c3c;
+}
+
+.good {
+  color: #2ecc71;
+}
+
+.coordinates {
+  margin-top: 20px;
+  color: #fff;
+  font-size: 1.2rem;
+  font-family: monospace;
+}
+
+.coordinatesLabel {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.coordinatesValue {
+  font-size: 1.4rem;
+  word-break: break-all;
+}
+
+.accuracy {
+  margin-top: 10px;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.accuracyValue {
+  color: #fff;
+  font-weight: 500;
+}
+
+.accuracyLow {
+  color: #2ecc71;
+}
+
+.accuracyMedium {
+  color: #f1c40f;
+}
+
+.accuracyHigh {
+  color: #e74c3c;
+}
+
+.speedCard {
+  background-color: #2a2a2a;
+  border-radius: 12px;
+  padding: 1.2rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.speedLabel {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.speedValue {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.speedUnit {
+  font-size: 1rem;
+  color: #888;
+  margin-left: 4px;
 }
 
 .coordinatesCard {
   background-color: #2a2a2a;
-  padding: 2rem;
-  border-radius: 20px;
+  border-radius: 12px;
+  padding: 1.2rem;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease;
 }
 
-.coordinatesCard:hover {
-  transform: translateY(-5px);
-}
-
-.coordinatesCardTitle {
-  color: #888;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.coordinates {
-  font-size: 2rem;
+.coordinatesValue {
+  font-family: monospace;
+  font-size: 1.5rem;
   font-weight: bold;
-  margin: 0;
-  color: #2ecc71;
+  color: #fff;
+  word-break: break-all;
+  margin-bottom: 0.5rem;
 }
 
-.precisionIndicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.dot.good {
-  background-color: #f1c40f;
-}
-
-.dot.low {
-  background-color: #e74c3c;
-}
-
-.dot.unknown {
-  background-color: #888;
-}
-
-.precisionText {
-  font-size: 1.1rem;
-  font-weight: bold;
-  margin: 0;
-  color: #888;
+.updateButton {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
 }
 
 .updateButtonContainer {
-  display: flex;
-  justify-content: center;
-  margin-top: auto;
-  padding: 1rem;
   position: fixed;
-  bottom: 0;
+  bottom: 0.01rem;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(26, 26, 26, 0.9) 50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  z-index: 100;
 } 

@@ -1,24 +1,6 @@
+import { collection, writeBatch, doc, Timestamp } from 'firebase/firestore';
+import { firestore } from './firebase';
 import { db } from './localDatabase';
-import { 
-  collection, 
-  writeBatch, 
-  Timestamp, 
-  doc,
-  getFirestore 
-} from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyC0Qkyd8fE-M7GoOgQ5pdLH-nvkFgjW1eE",
-  authDomain: "gps-tracker-9c484.firebaseapp.com",
-  projectId: "gps-tracker-9c484",
-  storageBucket: "gps-tracker-9c484.firebasestorage.app",
-  messagingSenderId: "139775082890",
-  appId: "1:139775082890:web:4b57d43e70249b6c540873",
-};
-
-const app = initializeApp(firebaseConfig);
-const firestore = getFirestore(app);
 
 const BATCH_SIZE = 500;
 
@@ -28,15 +10,12 @@ export const syncLocations = async (): Promise<{
   error?: string;
 }> => {
   try {
-    console.log('Iniciando sincronização...');
     const unsynced = await db.getUnsynced();
     
     if (unsynced.length === 0) {
-      console.log('Nenhum registro para sincronizar');
       return { success: true, syncedCount: 0 };
     }
 
-    console.log(`Sincronizando ${unsynced.length} registros...`);
     const batches = [];
     
     for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
@@ -63,28 +42,23 @@ export const syncLocations = async (): Promise<{
       });
     }
 
-    // Executar todos os batches
     for (const { batch, records } of batches) {
-      console.log('Executando batch...');
       await batch.commit();
-      console.log('Batch sincronizado com sucesso');
-      
-      // Excluir registros sincronizados
       const ids = records.map(record => record.id!);
       await db.deleteRecords(ids);
-      console.log(`${ids.length} registros excluídos do banco local`);
     }
 
-    return {
-      success: true,
-      syncedCount: unsynced.length,
+    return { 
+      success: true, 
+      syncedCount: unsynced.length 
     };
+
   } catch (error) {
     console.error('Erro na sincronização:', error);
-    return {
-      success: false,
-      syncedCount: 0,
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    return { 
+      success: false, 
+      syncedCount: 0, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
     };
   }
 }; 

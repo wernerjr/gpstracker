@@ -48,19 +48,23 @@ export function Tracker() {
         </div>
 
         <div className={styles.coordinatesCard}>
-          <h3 className={styles.cardTitle}>Coordenadas</h3>
-          <p className={styles.cardValue}>
-            {currentLocation 
-              ? `${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
-              : 'Aguardando...'}
-          </p>
-        </div>
-
-        <div className={styles.precisionIndicator}>
-          <div className={`${styles.dot} ${getPrecisionClass()}`} />
-          <span className={styles.precisionText}>
-            Precisão: {accuracy ? `${accuracy.toFixed(1)}m (${accuracy > 1000 ? 'Baixa' : 'Boa'})` : 'Indisponível'}
-          </span>
+          <div className={styles.speedLabel}>Coordenadas</div>
+          <div className={styles.coordinatesValue}>
+            {currentLocation ? `${currentLocation.latitude}, ${currentLocation.longitude}` : '-'}
+          </div>
+          {accuracy && (
+            <div className={styles.accuracy}>
+              Precisão:{' '}
+              <span className={`
+                ${styles.accuracyValue}
+                ${accuracy < 10 ? styles.accuracyLow : ''}
+                ${accuracy >= 10 && accuracy < 30 ? styles.accuracyMedium : ''}
+                ${accuracy >= 30 ? styles.accuracyHigh : ''}
+              `}>
+                {accuracy.toFixed(1)}m ({accuracy < 10 ? 'Excelente' : accuracy < 30 ? 'Boa' : 'Inadequada'})
+              </span>
+            </div>
+          )}
         </div>
 
         <div className={styles.updateButtonContainer}>
