@@ -160,4 +160,16 @@
   padding: 1rem;
   color: #888;
   font-size: 0.9rem;
+}
+
+.accuracyLow {
+  color: #2ecc71 !important;
+}
+
+.accuracyMedium {
+  color: #f1c40f !important;
+}
+
+.accuracyHigh {
+  color: #e74c3c !important;
 } 

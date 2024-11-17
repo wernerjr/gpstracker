@@ -161,6 +161,18 @@ export function SyncPage() {
     return num.toFixed(decimals);
   };
 
+  const getAccuracyLabel = (accuracy: number) => {
+    if (accuracy < 10) return 'Excelente';
+    if (accuracy < 30) return 'Boa';
+    return 'Inadequada';
+  };
+
+  const getAccuracyClass = (accuracy: number) => {
+    if (accuracy < 10) return styles.accuracyLow;
+    if (accuracy < 30) return styles.accuracyMedium;
+    return styles.accuracyHigh;
+  };
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.content} onScroll={handleScroll}>
@@ -194,6 +206,13 @@ export function SyncPage() {
                         <span className={styles.label}>Velocidade:</span>
                         <span className={styles.value}>
                           {safeToFixed(record.speed, 1)} km/h
+                        </span>
+                      </div>
+
+                      <div className={styles.detailItem}>
+                        <span className={styles.label}>Precisão:</span>
+                        <span className={`${styles.value} ${getAccuracyClass(record.accuracy)}`}>
+                          {safeToFixed(record.accuracy, 1)}m ({getAccuracyLabel(record.accuracy)})
                         </span>
                       </div>
                       
