@@ -15,7 +15,6 @@ export function SyncPage() {
   const [unsyncedRecords, setUnsyncedRecords] = useState<LocationRecord[]>([]);
   const { updateUnsyncedCount } = useSync();
 
-  // Carrega os registros ao montar o componente e após cada operação
   useEffect(() => {
     loadUnsyncedRecords();
     loadLastSyncTime();
@@ -23,9 +22,7 @@ export function SyncPage() {
 
   const loadUnsyncedRecords = async () => {
     try {
-      console.log('Carregando registros não sincronizados...');
       const records = await db.getUnsynced();
-      console.log('Registros encontrados:', records.length);
       setUnsyncedRecords(records);
     } catch (error) {
       console.error('Erro ao carregar registros:', error);
@@ -42,16 +39,12 @@ export function SyncPage() {
 
     setIsSyncing(true);
     try {
-      console.log('Iniciando sincronização...');
       const result = await syncLocations();
       
       if (result.success) {
-        console.log(`${result.syncedCount} registros sincronizados com sucesso`);
         const now = new Date().toISOString();
         localStorage.setItem('lastSyncTime', now);
         setLastSync(now);
-        
-        // Recarrega a lista de registros
         await loadUnsyncedRecords();
         await updateUnsyncedCount();
       } else {
@@ -85,8 +78,13 @@ export function SyncPage() {
     }
   };
 
-  // Pega o registro mais recente para exibição
   const latestRecord = unsyncedRecords[0];
+
+  // Função auxiliar para formatar números com segurança
+  const safeToFixed = (num: number | undefined | null, decimals: number = 2): string => {
+    if (num === undefined || num === null) return '0';
+    return num.toFixed(decimals);
+  };
 
   return (
     <div className={styles.pageContainer}>
@@ -99,8 +97,7 @@ export function SyncPage() {
               disabled={isSyncing || unsyncedRecords.length === 0}
               className={styles.syncButton}
             >
-              <ArrowPathIcon className={`${styles.icon} ${isSyncing ? styles.spinning : ''}`} />
-              Sincronizar Agora
+              <ArrowPathIcon className={`${styles.icon} ${isSyncing ? styles.spinning : ''}`} />              
             </button>
             
             <button
@@ -109,7 +106,6 @@ export function SyncPage() {
               className={styles.deleteButton}
             >
               <TrashIcon className={styles.icon} />
-              Excluir Registros
             </button>
           </div>
         </div>
@@ -118,27 +114,31 @@ export function SyncPage() {
           <div className={styles.syncStatus}>
             {unsyncedRecords.length === 0 ? (
               <p className={styles.emptyMessage}>Nenhuma sincronização pendente</p>
-            ) : (
+            ) : latestRecord ? (
               <div className={styles.recordDetails}>
                 <div className={styles.detailItem}>
                   <MapPinIcon className={styles.icon} />
                   <span className={styles.label}>Localização:</span>
                   <span className={styles.value}>
-                    {latestRecord?.latitude.toFixed(6)}, {latestRecord?.longitude.toFixed(6)}
+                    {safeToFixed(latestRecord?.latitude, 6)}, {safeToFixed(latestRecord?.longitude, 6)}
                   </span>
                 </div>
                 
                 <div className={styles.detailItem}>
                   <ChartBarIcon className={styles.icon} />
                   <span className={styles.label}>Velocidade:</span>
-                  <span className={styles.value}>{latestRecord?.speed.toFixed(1)} km/h</span>
+                  <span className={styles.value}>
+                    {safeToFixed(latestRecord?.speed, 1)} km/h
+                  </span>
                 </div>
                 
                 <div className={styles.detailItem}>
                   <ClockIcon className={styles.icon} />
                   <span className={styles.label}>Data:</span>
                   <span className={styles.value}>
-                    {latestRecord?.timestamp ? new Date(latestRecord.timestamp).toLocaleString() : '-'}
+                    {latestRecord?.timestamp 
+                      ? new Date(latestRecord.timestamp).toLocaleString() 
+                      : '-'}
                   </span>
                 </div>
 
@@ -148,6 +148,8 @@ export function SyncPage() {
                   </p>
                 )}
               </div>
+            ) : (
+              <p className={styles.emptyMessage}>Erro ao carregar dados</p>
             )}
           </div>
         </div>
