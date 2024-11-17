@@ -1,142 +1,189 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { useToast } from '../hooks/useToast';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { v4 } from 'uuid';
 import { db } from '../services/localDatabase';
-import { LocationData, LocationRecord } from '../types/common';
-import { v4 as uuidv4 } from 'uuid';
+import type { LocationData, LocationRecord } from '../types/common';
+import { useSync } from './SyncContext';
+import { GPS_CONFIG } from '../constants';
+import { emitNewLocationRecord } from '../utils/events';
+import { useToast } from '../hooks/useToast';
 
 interface TrackingContextData {
   isTracking: boolean;
+  startTracking: () => void;
+  stopTracking: () => void;
   currentSpeed: number;
   averageSpeed: number;
   maxSpeed: number;
   accuracy: number | null;
   currentLocation: LocationData | null;
-  startTracking: () => Promise<void>;
-  stopTracking: () => void;
 }
 
-const TrackingContext = createContext<TrackingContextData | undefined>(undefined);
+const TrackingContext = createContext<TrackingContextData>({} as TrackingContextData);
 
 export function TrackingProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useToast();
   const [isTracking, setIsTracking] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
-  const [speeds, setSpeeds] = useState<number[]>([]);
+  const [averageSpeed, setAverageSpeed] = useState(0);
   const [maxSpeed, setMaxSpeed] = useState(0);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
-  const [watchId, setWatchId] = useState<number | null>(null);
-  const [trackingId, setTrackingId] = useState<string | null>(null);
+  
+  const watchId = useRef<number | null>(null);
+  const trackingGuid = useRef<string | null>(null);
+  const speedReadings = useRef<number[]>([]);
+  const { updateUnsyncedCount } = useSync();
 
-  const averageSpeed = useMemo(() => {
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCurrentLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          speed: position.coords.speed !== null ? position.coords.speed * 3.6 : 0,
+          timestamp: position.timestamp
+        });
+        setAccuracy(position.coords.accuracy);
+      },
+      (error) => console.error('Erro ao obter posição inicial:', error),
+      {
+        enableHighAccuracy: GPS_CONFIG.HIGH_ACCURACY,
+        timeout: GPS_CONFIG.TIMEOUT,
+        maximumAge: GPS_CONFIG.MAX_AGE
+      }
+    );
+  }, []);
+
+  const calculateAverageSpeed = useCallback((speeds: number[]): number => {
     if (speeds.length === 0) return 0;
     const sum = speeds.reduce((acc, speed) => acc + speed, 0);
-    return Math.round(sum / speeds.length);
-  }, [speeds]);
+    return sum / speeds.length;
+  }, []);
 
-  const handlePositionUpdate = useCallback((position: GeolocationPosition) => {
-    const speed = position.coords.speed ? Math.round(position.coords.speed * 3.6) : 0;
+  const handlePositionUpdate = useCallback(async (position: GeolocationPosition) => {
+    if (!isTracking || !trackingGuid.current) return;
+
+    const speed = position.coords.speed !== null ? position.coords.speed * 3.6 : 0;
     
-    const locationData: LocationData = {
+    setCurrentSpeed(speed);
+    setCurrentLocation({
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
-      accuracy: position.coords.accuracy,
       speed,
       timestamp: position.timestamp
-    };
-
-    setCurrentSpeed(speed);
-    setMaxSpeed(prev => Math.max(prev, speed));
-    setSpeeds(prev => [...prev, speed]);
-    setAccuracy(position.coords.accuracy);
-    setCurrentLocation(locationData);
-
-    // Salvar no banco de dados local
-    const locationRecord: LocationRecord = {
-      ...locationData,
-      guid: uuidv4(),
-      trackingId: trackingId || undefined,
-      synced: 0
-    };
-
-    db.addLocation(locationRecord).catch(error => {
-      console.error('Erro ao salvar localização:', error);
     });
-  }, [trackingId]);
+    setAccuracy(position.coords.accuracy);
 
-  const handleError = useCallback((error: GeolocationPositionError) => {
-    showToast(`Erro ao obter localização: ${error.message}`, 'error');
-    setIsTracking(false);
-  }, [showToast]);
+    speedReadings.current.push(speed);
+    setAverageSpeed(calculateAverageSpeed(speedReadings.current));
+    setMaxSpeed(Math.max(...speedReadings.current));
+
+    try {
+      await db.addLocation({
+        guid: trackingGuid.current,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        speed,
+        timestamp: position.timestamp
+      });
+      
+      await updateUnsyncedCount();
+      emitNewLocationRecord();
+    } catch (error) {
+      console.error('Erro ao salvar localização:', error);
+    }
+  }, [isTracking, updateUnsyncedCount]);
+
+  const checkGPSPermissions = async (): Promise<boolean> => {
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' });
+      return result.state === 'granted';
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+      return false;
+    }
+  };
 
   const startTracking = useCallback(async () => {
     try {
-      const permission = await navigator.permissions.query({ name: 'geolocation' });
-      
-      if (permission.state === 'denied') {
-        throw new Error('Permissão de localização negada');
+      const hasPermission = await checkGPSPermissions();
+      if (!hasPermission) {
+        showToast('Permissão de GPS negada', 'error');
+        return;
       }
-
-      const newTrackingId = uuidv4();
-      setTrackingId(newTrackingId);
-
-      const id = navigator.geolocation.watchPosition(
-        handlePositionUpdate,
-        handleError,
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        }
-      );
-
-      setWatchId(id);
-      setIsTracking(true);
-      setSpeeds([]);
-      setMaxSpeed(0);
       
+      setCurrentSpeed(0);
+      setAverageSpeed(0);
+      setMaxSpeed(0);
+      speedReadings.current = [];
+      trackingGuid.current = v4();
+      setIsTracking(true);
+      showToast('Rastreamento iniciado', 'success');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       showToast(`Erro ao iniciar rastreamento: ${errorMessage}`, 'error');
     }
-  }, [handlePositionUpdate, handleError, showToast]);
+  }, [showToast]);
 
   const stopTracking = useCallback(() => {
     try {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        setWatchId(null);
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
       }
       setIsTracking(false);
-      setTrackingId(null);
+      trackingGuid.current = null;
+      showToast('Rastreamento finalizado', 'success');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       showToast(`Erro ao parar rastreamento: ${errorMessage}`, 'error');
     }
-  }, [watchId, showToast]);
+  }, [showToast]);
 
-  const contextValue = useMemo(() => ({
+  useEffect(() => {
+    if (!watchId.current) {
+      watchId.current = navigator.geolocation.watchPosition(
+        handlePositionUpdate,
+        (error) => console.error('Erro no GPS:', error),
+        {
+          enableHighAccuracy: GPS_CONFIG.HIGH_ACCURACY,
+          timeout: GPS_CONFIG.TIMEOUT,
+          maximumAge: GPS_CONFIG.MAX_AGE
+        }
+      );
+    }
+
+    return () => {
+      if (watchId.current) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
+    };
+  }, [handlePositionUpdate]);
+
+  const value = useMemo(() => ({
     isTracking,
+    startTracking,
+    stopTracking,
     currentSpeed,
     averageSpeed,
     maxSpeed,
     accuracy,
-    currentLocation,
-    startTracking,
-    stopTracking
+    currentLocation
   }), [
     isTracking,
+    startTracking,
+    stopTracking,
     currentSpeed,
     averageSpeed,
     maxSpeed,
     accuracy,
-    currentLocation,
-    startTracking,
-    stopTracking
+    currentLocation
   ]);
 
   return (
-    <TrackingContext.Provider value={contextValue}>
+    <TrackingContext.Provider value={value}>
       {children}
     </TrackingContext.Provider>
   );
@@ -144,8 +191,10 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
 
 export function useTracking() {
   const context = useContext(TrackingContext);
-  if (context === undefined) {
+  
+  if (context === undefined || Object.keys(context).length === 0) {
     throw new Error('useTracking must be used within a TrackingProvider');
   }
+  
   return context;
 } 
