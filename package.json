@@ -40,10 +40,7 @@
     "workbox-streams": "^6.6.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "react-scripts start"
   },
   "eslintConfig": {
     "extends": [
@@ -65,6 +62,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "workbox-webpack-plugin": "^7.3.0"
+    "workbox-webpack-plugin": "^7.3.0",
+    "react-app-rewired": "^2.2.1"
   }
 }

@@ -1,17 +1,36 @@
-export function register() {
-  if ('serviceWorker' in navigator) {
+export function register(config?: Config) {
+  if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
-      navigator.serviceWorker
-        .register(swUrl)
-        .then((registration) => {
-          console.log('SW registered: ', registration);
-        })
-        .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
-        });
+      
+      registerValidSW(swUrl, config);
     });
   }
+}
+
+function registerValidSW(swUrl: string, config?: Config) {
+  navigator.serviceWorker
+    .register(swUrl)
+    .then((registration) => {
+      registration.onupdatefound = () => {
+        const installingWorker = registration.installing;
+        if (installingWorker == null) {
+          return;
+        }
+        installingWorker.onstatechange = () => {
+          if (installingWorker.state === 'installed') {
+            if (navigator.serviceWorker.controller) {
+              if (config && config.onUpdate) {
+                config.onUpdate(registration);
+              }
+            }
+          }
+        };
+      };
+    })
+    .catch((error) => {
+      console.error('Error during service worker registration:', error);
+    });
 }
 
 export function unregister() {
@@ -24,4 +43,8 @@ export function unregister() {
         console.error(error.message);
       });
   }
+}
+
+interface Config {
+  onUpdate?: (registration: ServiceWorkerRegistration) => void;
 }

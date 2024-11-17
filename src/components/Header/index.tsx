@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { FaSatelliteDish, FaSync } from 'react-icons/fa';
 import { useSync } from '../../contexts/SyncContext';
 import styles from './styles.module.css';
+import UpdateButton from '../../components/UpdateButton';
 
 export function Header() {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export function Header() {
             <FaSatelliteDish className={styles.navIcon} />
             <span>Tracker</span>
           </button>
+          
+          <UpdateButton />
           
           <button
             className={`${styles.navButton} ${location.pathname === '/sync' ? styles.active : ''}`}
