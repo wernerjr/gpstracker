@@ -21,7 +21,8 @@
     "eject": "react-scripts eject",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --coverageDirectory=coverage"
+    "test:coverage": "jest --coverage --coverageDirectory=coverage",
+    "test:html": "start coverage/lcov-report/index.html"
   },
   "browserslist": {
     "production": [
