@@ -17,4 +17,10 @@ export interface SyncState {
   hasMore: boolean;
   isLoading: boolean;
   currentPage: number;
+}
+
+export interface SyncResult {
+  success: boolean;
+  syncedCount?: number;
+  error?: string;
 } 

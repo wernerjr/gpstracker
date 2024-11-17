@@ -1,284 +1,193 @@
-import { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import styled from 'styled-components';
-import { TrashIcon, ArrowPathIcon, MapPinIcon, ChartBarIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { db } from '../../services/localDatabase';
-import type { LocationRecord } from '../../types/common';
-import { syncLocations } from '../../services/syncService';
-import { useSync } from '../../contexts/SyncContext';
+import { useState, useRef, useEffect } from 'react';
+import { useSyncManagement } from '../../hooks/useSyncManagement';
+import { Toast } from '../../components/Toast';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ERROR_MESSAGES } from '../../constants/messages';
 import styles from './styles.module.css';
-import { Button } from '../../components/Button';
-import { EVENTS } from '../../utils/events';
-
-// Extrair componentes menores
-interface SyncHeaderProps {
-  onSync: () => void;
-  onDelete: () => void;
-  isSyncing: boolean;
-  isDeleting: boolean;
-  hasRecords: boolean;
-}
-
-const SyncHeader: React.FC<SyncHeaderProps> = ({ 
-  onSync, 
-  onDelete, 
-  isSyncing, 
-  isDeleting, 
-  hasRecords 
-}) => (
-  <div className={styles.header}>
-    <h1 className={styles.title}>Sincronização</h1>
-    <div className={styles.buttonGroup}>
-      <Button 
-        onClick={onSync} 
-        disabled={isSyncing || !hasRecords}
-        icon={
-          <ArrowPathIcon 
-            className={isSyncing ? styles.spinning : ''} 
-            aria-hidden="true"
-          />
-        }
-        variant="success"
-      >
-        <span className={styles.buttonText}>Sincronizar</span>
-      </Button>
-
-      <Button
-        onClick={onDelete}
-        disabled={isDeleting || !hasRecords}
-        icon={<TrashIcon aria-hidden="true" />}
-        variant="danger"
-      >
-        <span className={styles.buttonText}>Limpar</span>
-      </Button>
-    </div>
-  </div>
-);
-
-// Usar hooks customizados para lógica de negócio
-const useSyncManagement = () => {
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<string | null>(null);
-  
-  const handleSync = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    try {
-      // lógica de sincronização
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  return { isSyncing, lastSync, handleSync };
-};
+import { SyncHeader } from '../../components/SyncHeader';
+import { SyncRecord } from '../../components/SyncRecord';
+import { FaSync, FaTrash } from 'react-icons/fa';
 
 export function SyncPage() {
-  const [lastSync, setLastSync] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [unsyncedRecords, setUnsyncedRecords] = useState<LocationRecord[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const { updateUnsyncedCount } = useSync();
+  const {
+    unsyncedRecords,
+    isSyncing,
+    isDeleting,
+    hasMore,
+    handleSync,
+    handleScroll,
+    handleDeleteRecord,
+    handleDeleteUnsynced,
+    loadUnsyncedRecords,
+  } = useSyncManagement();
 
-  const loadUnsyncedRecords = async (page: number, append: boolean = false) => {
-    if (isLoading) return;
-    
-    setIsLoading(true);
-    try {
-      const records = await db.getUnsynced(page);
-      const totalCount = await db.getUnsyncedCount();
-      
-      setUnsyncedRecords(prev => append ? [...prev, ...records] : records);
-      setHasMore(records.length > 0 && unsyncedRecords.length < totalCount);
-    } catch (error) {
-      console.error('Erro ao carregar registros:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, clientHeight, scrollHeight } = event.currentTarget;
-    if (scrollHeight - scrollTop <= clientHeight * 1.5 && hasMore && !isLoading) {
-      setCurrentPage(prev => prev + 1);
-      loadUnsyncedRecords(currentPage + 1, true);
-    }
-  }, [hasMore, isLoading, currentPage]);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+    isVisible: boolean;
+  }>({
+    message: '',
+    type: 'success',
+    isVisible: false,
+  });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     loadUnsyncedRecords(1);
-    loadLastSyncTime();
-  }, []);
+  }, [loadUnsyncedRecords]);
 
-  useEffect(() => {
-    const handleNewRecord = () => {
-      loadUnsyncedRecords(1);
-    };
-
-    window.addEventListener(EVENTS.NEW_LOCATION_RECORD, handleNewRecord);
-
-    return () => {
-      window.removeEventListener(EVENTS.NEW_LOCATION_RECORD, handleNewRecord);
-    };
-  }, []);
-
-  const loadLastSyncTime = () => {
-    const lastSyncTime = localStorage.getItem('lastSyncTime');
-    setLastSync(lastSyncTime);
+  const handleDeleteWithToast = async (id: number) => {
+    try {
+      await handleDeleteRecord(id);
+      setToast({
+        message: "1 registro excluído com sucesso!",
+        type: 'success',
+        isVisible: true,
+      });
+    } catch (error) {
+      setToast({
+        message: `Erro ao excluir registro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        type: 'error',
+        isVisible: true,
+      });
+    }
   };
 
-  const handleSync = async () => {
-    if (isSyncing) return;
-
-    setIsSyncing(true);
+  const handleDeleteAllWithToast = async () => {
     try {
-      const result = await syncLocations();
+      const count = unsyncedRecords.length;
+      await handleDeleteUnsynced();
+      setToast({
+        message: `${count} registros excluídos com sucesso!`,
+        type: 'success',
+        isVisible: true,
+      });
+    } catch (error) {
+      setToast({
+        message: `Erro ao excluir registros: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        type: 'error',
+        isVisible: true,
+      });
+    }
+  };
+
+  const confirmDelete = (id: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir Registro',
+      message: ERROR_MESSAGES.DELETE_CONFIRMATION,
+      onConfirm: () => {
+        handleDeleteWithToast(id);
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const confirmDeleteAll = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir Todos os Registros',
+      message: ERROR_MESSAGES.DELETE_ALL_CONFIRMATION,
+      onConfirm: () => {
+        handleDeleteAllWithToast();
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const handleSyncWithToast = async () => {
+    try {
+      const result = await handleSync();
       
       if (result.success) {
-        const now = new Date().toISOString();
-        localStorage.setItem('lastSyncTime', now);
-        setLastSync(now);
-        await loadUnsyncedRecords(1);
-        await updateUnsyncedCount();
+        setToast({
+          message: `${result.syncedCount || 0} registros sincronizados com sucesso!`,
+          type: 'success',
+          isVisible: true,
+        });
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Erro desconhecido');
       }
     } catch (error) {
-      console.error('Erro na sincronização:', error);
-      alert('Erro ao sincronizar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
-    } finally {
-      setIsSyncing(false);
+      setToast({
+        message: `Erro ao sincronizar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        type: 'error',
+        isVisible: true,
+      });
     }
-  };
-
-  const handleDeleteUnsynced = async () => {
-    if (!window.confirm('Tem certeza que deseja excluir todos os registros não sincronizados?')) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      const records = await db.getUnsynced();
-      const ids = records.map(record => record.id!);
-      await db.deleteRecords(ids);
-      await loadUnsyncedRecords(1);
-      await updateUnsyncedCount();
-    } catch (error) {
-      console.error('Erro ao excluir registros:', error);
-      alert('Erro ao excluir registros');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleDeleteRecord = async (id: number) => {
-    if (!window.confirm('Tem certeza que deseja excluir este registro?')) {
-      return;
-    }
-
-    try {
-      await db.deleteRecord(id);
-      await loadUnsyncedRecords(1);
-      await updateUnsyncedCount();
-    } catch (error) {
-      console.error('Erro ao excluir registro:', error);
-      alert('Erro ao excluir registro');
-    }
-  };
-
-  // Função auxiliar para formatar números com segurança
-  const safeToFixed = (num: number | undefined | null, decimals: number = 2): string => {
-    if (num === undefined || num === null) return '0';
-    return num.toFixed(decimals);
-  };
-
-  const getAccuracyLabel = (accuracy: number) => {
-    if (accuracy < 10) return 'Excelente';
-    if (accuracy < 30) return 'Boa';
-    return 'Inadequada';
-  };
-
-  const getAccuracyClass = (accuracy: number) => {
-    if (accuracy < 10) return styles.accuracyLow;
-    if (accuracy < 30) return styles.accuracyMedium;
-    return styles.accuracyHigh;
   };
 
   return (
-    <div className={styles.pageContainer}>
-      <div className={styles.content} onScroll={handleScroll}>
-        <SyncHeader 
-          onSync={handleSync} 
-          onDelete={handleDeleteUnsynced} 
-          isSyncing={isSyncing} 
-          isDeleting={isDeleting} 
-          hasRecords={unsyncedRecords.length > 0}
-        />
+    <div className={styles.container}>
+      <div className={styles.syncHeader}>
+        <button
+          onClick={handleSyncWithToast}
+          disabled={isSyncing || unsyncedRecords.length === 0}
+          className={`${styles.button} ${styles.syncButton}`}
+        >
+          <FaSync className={isSyncing ? styles.rotating : ''} />
+          Sincronizar
+        </button>
 
-        <div className={styles.syncCard}>
-          <div className={styles.syncStatus}>
-            {unsyncedRecords.length === 0 ? (
-              <p className={styles.emptyMessage}>Nenhuma sincronização pendente</p>
-            ) : (
-              <>
-                {unsyncedRecords.map((record, index) => (
-                  <div key={record.id} className={styles.recordItem}>
-                    <div className={styles.recordDetails}>
-                      <div className={styles.detailItem}>
-                        <MapPinIcon className={styles.icon} />
-                        <span className={styles.label}>Localização:</span>
-                        <span className={styles.value}>
-                          {safeToFixed(record.latitude, 6)}, {safeToFixed(record.longitude, 6)}
-                        </span>
-                      </div>
-                      
-                      <div className={styles.detailItem}>
-                        <ChartBarIcon className={styles.icon} />
-                        <span className={styles.label}>Velocidade:</span>
-                        <span className={styles.value}>
-                          {safeToFixed(record.speed, 1)} km/h
-                        </span>
-                      </div>
-
-                      <div className={styles.detailItem}>
-                        <span className={styles.label}>Precisão:</span>
-                        <span className={`${styles.value} ${getAccuracyClass(record.accuracy)}`}>
-                          {safeToFixed(record.accuracy, 1)}m ({getAccuracyLabel(record.accuracy)})
-                        </span>
-                      </div>
-                      
-                      <div className={styles.detailItem}>
-                        <ClockIcon className={styles.icon} />
-                        <span className={styles.label}>Data:</span>
-                        <span className={styles.value}>
-                          {record.timestamp ? new Date(record.timestamp).toLocaleString() : '-'}
-                        </span>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => handleDeleteRecord(record.id!)}
-                      className={styles.deleteButton}
-                      title="Excluir registro"
-                    >
-                      <TrashIcon className={styles.deleteIcon} />
-                    </button>
-                  </div>
-                ))}
-                
-                {isLoading && (
-                  <div className={styles.loadingMore}>
-                    Carregando mais registros...
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+        <button
+          onClick={confirmDeleteAll}
+          disabled={isDeleting || unsyncedRecords.length === 0}
+          className={`${styles.button} ${styles.deleteButton}`}
+        >
+          <FaTrash />
+          Excluir Todos
+        </button>
       </div>
+
+      <div className={styles.recordsContainer}>
+        {unsyncedRecords.length > 0 ? (
+          <div 
+            className={styles.recordsList}
+            onScroll={handleScroll}
+            ref={containerRef}
+          >
+            {unsyncedRecords.map(record => (
+              <SyncRecord
+                key={record.id}
+                record={record}
+                onDelete={confirmDelete}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            Nenhum registro para sincronizar
+          </div>
+        )}
+      </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+      />
     </div>
   );
 } 

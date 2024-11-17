@@ -1,25 +1,35 @@
 import { useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { FaCheck, FaTimes } from 'react-icons/fa';
 import styles from './styles.module.css';
 
 interface ToastProps {
   message: string;
-  type: 'error' | 'success' | 'warning';
+  type: 'success' | 'error';
+  isVisible: boolean;
   onClose: () => void;
 }
 
-export const Toast = ({ message, type, onClose }: ToastProps) => {
+export function Toast({ message, type, isVisible, onClose }: ToastProps) {
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onClose]);
+
+  if (!isVisible) return null;
 
   return (
     <div className={`${styles.toast} ${styles[type]}`}>
-      <span>{message}</span>
-      <button onClick={onClose} className={styles.closeButton}>
-        <XMarkIcon className={styles.closeIcon} />
-      </button>
+      {type === 'success' ? (
+        <FaCheck className={styles.icon} />
+      ) : (
+        <FaTimes className={styles.icon} />
+      )}
+      <span className={styles.message}>{message}</span>
     </div>
   );
-}; 
+} 

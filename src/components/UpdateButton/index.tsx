@@ -1,8 +1,11 @@
 import { useState, useCallback } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/solid';
+import { Toast } from '../Toast';
+import { useToast } from '../../hooks/useToast';
 
 const UpdateButton = () => {
   const [isSpinning, setIsSpinning] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
 
   const checkForUpdates = useCallback(async () => {
     if (isSpinning) return;
@@ -16,49 +19,51 @@ const UpdateButton = () => {
 
       const registration = await navigator.serviceWorker.register('/service-worker.js');
       await registration.update();
-      console.log('Service Worker atualizado');
+      showToast('Aplicativo atualizado com sucesso!', 'success');
 
     } catch (error) {
-      console.error('Erro:', error);
+      showToast(
+        `Erro ao atualizar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        'error'
+      );
     }
     
-    // Aguarda 1 segundo antes de parar a animação
     setTimeout(() => {
       setIsSpinning(false);
     }, 1000);
     
-  }, [isSpinning]);
+  }, [isSpinning, showToast]);
 
   return (
-    <button 
-      onClick={checkForUpdates}
-      disabled={isSpinning}
-      title="Atualizar Service Worker"
-      style={{
-        background: 'transparent',
-        border: 'none',
-        padding: '4px',
-        cursor: isSpinning ? 'not-allowed' : 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: isSpinning ? 0.5 : 0.7,
-        transition: 'opacity 0.2s ease',
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-    >
-      <ArrowPathIcon 
-        style={{ 
-          width: '16px', 
-          height: '16px',
-          color: '#fff',
-          animation: isSpinning ? 'spin 1s linear' : 'none',
-          // Garante que a animação pare na posição inicial
-          transform: isSpinning ? undefined : 'rotate(0deg)'
-        }} 
+    <>
+      <button 
+        onClick={checkForUpdates}
+        disabled={isSpinning}
+        title="Atualizar Service Worker"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: '4px',
+          cursor: 'pointer',
+          color: 'white',
+        }}
+      >
+        <ArrowPathIcon 
+          style={{
+            width: '20px',
+            height: '20px',
+            animation: isSpinning ? 'rotate 1s linear infinite' : 'none'
+          }}
+        />
+      </button>
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
       />
-    </button>
+    </>
   );
 };
 
