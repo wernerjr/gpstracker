@@ -191,8 +191,10 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
 
 export function useTracking() {
   const context = useContext(TrackingContext);
-  if (!context) {
+  
+  if (context === undefined || Object.keys(context).length === 0) {
     throw new Error('useTracking must be used within a TrackingProvider');
   }
+  
   return context;
 } 
