@@ -31,18 +31,24 @@ const SyncHeader: React.FC<SyncHeaderProps> = ({
       <Button 
         onClick={onSync} 
         disabled={isSyncing || !hasRecords}
-        icon={<ArrowPathIcon />}
+        icon={
+          <ArrowPathIcon 
+            className={isSyncing ? styles.spinning : ''} 
+            aria-hidden="true"
+          />
+        }
         variant="success"
       >
-        Sincronizar
+        <span className={styles.buttonText}>Sincronizar</span>
       </Button>
+
       <Button
         onClick={onDelete}
         disabled={isDeleting || !hasRecords}
-        icon={<TrashIcon />}
+        icon={<TrashIcon aria-hidden="true" />}
         variant="danger"
       >
-        Limpar
+        <span className={styles.buttonText}>Limpar</span>
       </Button>
     </div>
   </div>

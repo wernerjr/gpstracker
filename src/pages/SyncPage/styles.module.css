@@ -31,7 +31,7 @@
   gap: 0.75rem;
 }
 
-.syncButton, .deleteButton {
+.actionButton {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -194,4 +194,37 @@
 .deleteIcon {
   width: 20px;
   height: 20px;
+}
+
+.buttonIcon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.buttonText {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .buttonGroup {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .buttonText {
+    display: none;
+  }
+
+  .buttonGroup :global(button) {
+    padding: 0.75rem;
+    aspect-ratio: 1;
+    min-width: unset;
+  }
 } 
