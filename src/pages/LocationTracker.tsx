@@ -1,49 +1,123 @@
-import { Header } from '../components/Header';
-import { TrackingButton } from '../components/TrackingButton';
-import { Dashboard } from '../components/Dashboard';
-import { useLocation } from '../hooks/useLocation';
-import { styles } from '../styles/layout';
+import { useTracking } from '../contexts/TrackingContext';
+import { styles } from './LocationTracker/styles';
 
-export const LocationTracker: React.FC = () => {
-  const {
-    currentLocation,
-    currentSpeed,
-    averageSpeed,
-    maxSpeed,
+export function LocationTracker() {
+  const { 
+    isTracking, 
+    startTracking, 
+    stopTracking, 
+    currentSpeed, 
+    averageSpeed, 
+    maxSpeed, 
     accuracy,
-    isTracking,
-    isPrecisionAcceptable,
-    startTracking,
-    stopTracking,
-    unsyncedCount,
-    syncData,
-  } = useLocation();
+    currentLocation 
+  } = useTracking();
 
   return (
-    <div style={styles.container}>
+    <div style={{
+      backgroundColor: '#1a1a1a',
+      minHeight: '100vh',
+      color: 'white',
+      padding: '20px'
+    }}>
       <main style={{
-        padding: '1rem',
+        maxWidth: '800px',
+        margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        gap: '1rem',
-        flex: 1,
+        gap: '2rem'
       }}>
-        <TrackingButton
-          isTracking={isTracking}
-          isPrecisionAcceptable={isPrecisionAcceptable}
-          onStartTracking={startTracking}
-          onStopTracking={stopTracking}
-        />
+        <button 
+          onClick={isTracking ? stopTracking : startTracking}
+          style={{
+            padding: '1rem 2.5rem',
+            borderRadius: '50px',
+            backgroundColor: isTracking ? '#e74c3c' : '#2ecc71',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            transition: 'all 0.3s ease',
+            margin: '0 auto'
+          }}
+        >
+          {isTracking ? 'Parar Rastreamento' : 'Iniciar Rastreamento'}
+        </button>
 
-        <Dashboard
-          currentSpeed={currentSpeed}
-          averageSpeed={averageSpeed}
-          maxSpeed={maxSpeed}
-          accuracy={accuracy}
-          currentLocation={currentLocation}
-        />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#2a2a2a',
+            padding: '1.5rem',
+            borderRadius: '15px',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ marginBottom: '0.5rem', color: '#888' }}>Velocidade Atual</h3>
+            <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{currentSpeed?.toFixed(1) || '0'} km/h</p>
+          </div>
+
+          <div style={{
+            backgroundColor: '#2a2a2a',
+            padding: '1.5rem',
+            borderRadius: '15px',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ marginBottom: '0.5rem', color: '#888' }}>Velocidade Média</h3>
+            <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{averageSpeed?.toFixed(1) || '0'} km/h</p>
+          </div>
+
+          <div style={{
+            backgroundColor: '#2a2a2a',
+            padding: '1.5rem',
+            borderRadius: '15px',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ marginBottom: '0.5rem', color: '#888' }}>Velocidade Máxima</h3>
+            <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{maxSpeed?.toFixed(1) || '0'} km/h</p>
+          </div>
+
+          <div style={{
+            backgroundColor: '#2a2a2a',
+            padding: '1.5rem',
+            borderRadius: '15px',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ marginBottom: '0.5rem', color: '#888' }}>Coordenadas</h3>
+            <p style={{ 
+              fontSize: '1.1rem', 
+              fontWeight: 'bold',
+              fontFamily: 'monospace',
+              wordBreak: 'break-all'
+            }}>
+              {currentLocation 
+                ? `${currentLocation.latitude.toFixed(6)},\n${currentLocation.longitude.toFixed(6)}`
+                : 'Aguardando...'}
+            </p>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          justifyContent: 'center',
+          color: accuracy ? (accuracy > 1000 ? '#e74c3c' : '#f1c40f') : '#888'
+        }}>
+          <div style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            backgroundColor: 'currentColor'
+          }} />
+          <span>
+            Precisão: {accuracy ? `${accuracy.toFixed(1)}m (${accuracy > 1000 ? 'Baixa' : 'Boa'})` : 'Indisponível'}
+          </span>
+        </div>
       </main>
     </div>
   );
-}; 
+} 

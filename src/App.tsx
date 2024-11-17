@@ -1,32 +1,25 @@
-import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
-import { LocationTracker } from './pages/LocationTracker';
+import { Tracker } from './pages/Tracker';
 import { SyncPage } from './pages/SyncPage';
+import { TrackingProvider } from './contexts/TrackingContext';
+import { SyncProvider } from './contexts/SyncContext';
 
-function App() {
-  const [unsyncedCount, setUnsyncedCount] = useState(0);
-
-  useEffect(() => {
-    const updateUnsyncedCount = () => {
-      const records = JSON.parse(localStorage.getItem('locationRecords') || '[]');
-      const unsynced = records.filter((record: any) => !record.synced);
-      setUnsyncedCount(unsynced.length);
-    };
-
-    updateUnsyncedCount();
-  }, []);
-
+export function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Header unsyncedCount={unsyncedCount} />
-        <Routes>
-          <Route path="/" element={<LocationTracker />} />
-          <Route path="/sync" element={<SyncPage />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <SyncProvider>
+        <TrackingProvider>
+          <div className="App">
+            <Header />
+            <Routes>
+              <Route path="/" element={<Tracker />} />
+              <Route path="/sync" element={<SyncPage />} />
+            </Routes>
+          </div>
+        </TrackingProvider>
+      </SyncProvider>
+    </BrowserRouter>
   );
 }
 

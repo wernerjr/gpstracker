@@ -3,6 +3,7 @@ import Dexie, { Table } from 'dexie';
 export interface LocationRecord {
   id?: number;
   guid: string;
+  trackingId: string;
   latitude: number;
   longitude: number;
   accuracy: number;
@@ -16,8 +17,8 @@ class LocationDatabase extends Dexie {
 
   constructor() {
     super('LocationDatabase');
-    this.version(1).stores({
-      locations: '++id, guid, synced, timestamp'
+    this.version(2).stores({
+      locations: '++id, guid, trackingId, synced, timestamp'
     });
   }
 
@@ -51,6 +52,28 @@ class LocationDatabase extends Dexie {
       .where('id')
       .anyOf(ids)
       .modify({ synced: 1 });
+  }
+
+  async deleteRecords(ids: number[]) {
+    try {
+      console.log('Excluindo registros:', ids);
+      await this.locations.bulkDelete(ids);
+      console.log('Registros excluídos com sucesso');
+    } catch (error) {
+      console.error('Erro ao excluir registros:', error);
+      throw error;
+    }
+  }
+
+  async clearDatabase() {
+    try {
+      await this.locations.clear();
+      console.log('Banco de dados limpo com sucesso');
+      return true;
+    } catch (error) {
+      console.error('Erro ao limpar banco de dados:', error);
+      throw error;
+    }
   }
 }
 

@@ -1,44 +1,44 @@
-import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Container, Logo, Nav, NavItem, MobileMenuButton, NavMenu } from './styles';
+import { FaSatelliteDish, FaSync } from 'react-icons/fa';
+import { useSync } from '../../contexts/SyncContext';
+import styles from './styles.module.css';
 
-interface HeaderProps {
-  unsyncedCount: number;
-}
-
-export function Header({ unsyncedCount }: HeaderProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { unsyncedCount = 0 } = useSync();
 
   return (
-    <Container>
-      <Logo>
-        GPS Tracker<span>.</span>
-      </Logo>
-      
-      <NavMenu isOpen={isOpen}>
-        <Nav>
-          <NavItem 
-            active={location.pathname === '/'} 
+    <header className={styles.header}>
+      <div className={styles.container}>
+        <div className={styles.logo}>
+          <FaSatelliteDish className={styles.logoIcon} />
+          <h1>GPS Tracker</h1>
+        </div>
+
+        <nav className={styles.nav}>
+          <button
+            className={`${styles.navButton} ${location.pathname === '/' ? styles.active : ''}`}
             onClick={() => navigate('/')}
           >
-            Tracker
-          </NavItem>
-          <NavItem 
-            active={location.pathname === '/sync'}
+            <FaSatelliteDish className={styles.navIcon} />
+            <span>Tracker</span>
+          </button>
+          
+          <button
+            className={`${styles.navButton} ${location.pathname === '/sync' ? styles.active : ''}`}
             onClick={() => navigate('/sync')}
           >
-            Sincronização {unsyncedCount > 0 && `(${unsyncedCount})`}
-          </NavItem>
-        </Nav>
-      </NavMenu>
-
-      <MobileMenuButton onClick={() => setIsOpen(!isOpen)}>
-        <span></span>
-        <span></span>
-        <span></span>
-      </MobileMenuButton>
-    </Container>
+            <div className={styles.syncContainer}>
+              <FaSync className={`${styles.navIcon} ${unsyncedCount > 0 ? styles.rotating : ''}`} />
+              {unsyncedCount > 0 && (
+                <span className={styles.badge}>{unsyncedCount}</span>
+              )}
+            </div>
+            <span>Sincronização</span>
+          </button>
+        </nav>
+      </div>
+    </header>
   );
 } 

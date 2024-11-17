@@ -3,11 +3,22 @@ import {
   collection, 
   writeBatch, 
   Timestamp, 
-  doc, 
-  DocumentReference,
-  CollectionReference 
+  doc,
+  getFirestore 
 } from 'firebase/firestore';
-import { db as firestore } from './firebase';
+import { initializeApp } from 'firebase/app';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0Qkyd8fE-M7GoOgQ5pdLH-nvkFgjW1eE",
+  authDomain: "gps-tracker-9c484.firebaseapp.com",
+  projectId: "gps-tracker-9c484",
+  storageBucket: "gps-tracker-9c484.firebasestorage.app",
+  messagingSenderId: "139775082890",
+  appId: "1:139775082890:web:4b57d43e70249b6c540873",
+};
+
+const app = initializeApp(firebaseConfig);
+const firestore = getFirestore(app);
 
 const BATCH_SIZE = 500;
 
@@ -17,16 +28,21 @@ export const syncLocations = async (): Promise<{
   error?: string;
 }> => {
   try {
+    console.log('Iniciando sincronização...');
     const unsynced = await db.getUnsynced();
+    
     if (unsynced.length === 0) {
+      console.log('Nenhum registro para sincronizar');
       return { success: true, syncedCount: 0 };
     }
 
+    console.log(`Sincronizando ${unsynced.length} registros...`);
     const batches = [];
+    
     for (let i = 0; i < unsynced.length; i += BATCH_SIZE) {
       const batch = writeBatch(firestore);
       const batchItems = unsynced.slice(i, i + BATCH_SIZE);
-      const trackerRef = collection(firestore, 'tracker');
+      const trackerRef = collection(firestore, 'locations');
 
       batchItems.forEach(record => {
         const docRef = doc(trackerRef);
@@ -36,20 +52,27 @@ export const syncLocations = async (): Promise<{
           longitude: record.longitude,
           accuracy: record.accuracy,
           speed: record.speed,
-          timestamp: Timestamp.fromDate(record.timestamp),
+          timestamp: Timestamp.fromDate(new Date(record.timestamp)),
+          createdAt: Timestamp.now()
         });
       });
 
       batches.push({
         batch,
-        ids: batchItems.map(item => item.id!),
+        records: batchItems,
       });
     }
 
     // Executar todos os batches
-    for (const { batch, ids } of batches) {
+    for (const { batch, records } of batches) {
+      console.log('Executando batch...');
       await batch.commit();
-      await db.markAsSynced(ids);
+      console.log('Batch sincronizado com sucesso');
+      
+      // Excluir registros sincronizados
+      const ids = records.map(record => record.id!);
+      await db.deleteRecords(ids);
+      console.log(`${ids.length} registros excluídos do banco local`);
     }
 
     return {
