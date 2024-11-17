@@ -67,17 +67,6 @@ class LocationDatabase extends Dexie {
     }
   }
 
-  async clearDatabase() {
-    try {
-      await this.locations.clear();
-      console.log('Banco de dados limpo com sucesso');
-      return true;
-    } catch (error) {
-      console.error('Erro ao limpar banco de dados:', error);
-      throw error;
-    }
-  }
-
   async deleteRecord(id: number) {
     try {
       await this.locations.delete(id);

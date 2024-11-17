@@ -99,23 +99,6 @@ export const useSyncManagement = (): SyncManagementReturn => {
     };
   }, [refreshRecords]);
 
-  const safeToFixed = useCallback((num: number | undefined | null, decimals: number = 2): string => {
-    if (num === undefined || num === null) return '0';
-    return num.toFixed(decimals);
-  }, []);
-
-  const getAccuracyLabel = useCallback((accuracy: number): string => {
-    if (accuracy < 10) return 'Excelente';
-    if (accuracy < 30) return 'Boa';
-    return 'Inadequada';
-  }, []);
-
-  const getAccuracyClass = useCallback((accuracy: number): string => {
-    if (accuracy < 10) return styles.accuracyLow;
-    if (accuracy < 30) return styles.accuracyMedium;
-    return styles.accuracyHigh;
-  }, []);
-
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     if (isLoading || !hasMore) return;
 
