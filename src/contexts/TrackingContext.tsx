@@ -20,7 +20,11 @@ const TrackingContext = createContext<TrackingContextData>({} as TrackingContext
 export function TrackingProvider({ children }: { children: React.ReactNode }) {
   const [isTracking, setIsTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+  const [currentSpeed, setCurrentSpeed] = useState<number>(0);
+  const [averageSpeed, setAverageSpeed] = useState<number>(0);
+  const [maxSpeed, setMaxSpeed] = useState<number>(0);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  
   const watchId = useRef<number | null>(null);
   const trackingGuid = useRef<string | null>(null);
   const speedReadings = useRef<number[]>([]);
@@ -70,13 +74,18 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
   }, [isTracking, updateUnsyncedCount]);
 
   const handlePositionUpdate = useCallback((position: GeolocationPosition) => {
-    const speed = position.coords.speed || 0;
-    speedReadings.current.push(speed);
+    const speed = position.coords.speed ? position.coords.speed * 3.6 : 0; // Convertendo para km/h
     
-    if (speedReadings.current.length > 10) {
-      speedReadings.current.shift();
-    }
-
+    // Atualiza velocidade atual
+    setCurrentSpeed(speed);
+    
+    // Atualiza velocidade máxima se necessário
+    setMaxSpeed(prevMax => speed > prevMax ? speed : prevMax);
+    
+    // Adiciona à lista de velocidades e calcula média
+    speedReadings.current.push(speed);
+    setAverageSpeed(calculateAverageSpeed(speedReadings.current));
+    
     setCurrentLocation({
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
@@ -84,32 +93,31 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
       timestamp: position.timestamp
     });
     
-    setAccuracy(position.coords.accuracy || 0);
+    setAccuracy(position.coords.accuracy || null);
 
     saveLocation(position);
   }, [saveLocation]);
 
   const startTracking = useCallback(() => {
-    if (!isTracking) {
-      console.log('Iniciando rastreamento...');
-      trackingGuid.current = crypto.randomUUID();
-      speedReadings.current = [];
-      lastSaveTime.current = 0;
+    // Reseta todos os valores ao iniciar novo rastreamento
+    setCurrentSpeed(0);
+    setAverageSpeed(0);
+    setMaxSpeed(0);
+    speedReadings.current = [];
+    
+    setIsTracking(true);
+    trackingGuid.current = crypto.randomUUID();
 
-      watchId.current = navigator.geolocation.watchPosition(
-        handlePositionUpdate,
-        (error) => console.error('Erro de GPS:', error),
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        }
-      );
-
-      setIsTracking(true);
-      console.log('Rastreamento iniciado com ID:', trackingGuid.current);
-    }
-  }, [isTracking, handlePositionUpdate]);
+    watchId.current = navigator.geolocation.watchPosition(
+      handlePositionUpdate,
+      (error) => console.error('Erro de GPS:', error),
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    );
+  }, [handlePositionUpdate]);
 
   const stopTracking = useCallback(() => {
     console.log('Parando rastreamento...');
@@ -145,27 +153,21 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     };
   }, [handlePositionUpdate]);
 
-  const calculateAverageSpeed = useCallback(() => {
-    if (speedReadings.current.length === 0) return 0;
-    
-    const sum = speedReadings.current.reduce((acc, speed) => acc + speed, 0);
-    return (sum / speedReadings.current.length) * 3.6; // Convertendo para km/h
-  }, []);
-
-  const calculateMaxSpeed = useCallback(() => {
-    if (speedReadings.current.length === 0) return 0;
-    
-    return Math.max(...speedReadings.current) * 3.6; // Convertendo para km/h
-  }, []);
+  // Função para calcular a média das velocidades
+  const calculateAverageSpeed = (speeds: number[]): number => {
+    if (speeds.length === 0) return 0;
+    const sum = speeds.reduce((acc, speed) => acc + speed, 0);
+    return sum / speeds.length;
+  };
 
   return (
     <TrackingContext.Provider value={{
       isTracking,
       startTracking,
       stopTracking,
-      currentSpeed: currentLocation?.speed ? currentLocation.speed * 3.6 : 0,
-      averageSpeed: calculateAverageSpeed(),
-      maxSpeed: calculateMaxSpeed(),
+      currentSpeed,
+      averageSpeed,
+      maxSpeed,
       accuracy,
       currentLocation
     }}>
