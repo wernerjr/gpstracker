@@ -1,21 +1,44 @@
-import { ArrowPathIcon } from '@heroicons/react/24/solid';
-import { SyncStatus } from './SyncStatus';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Container, Logo, Nav, NavItem, MobileMenuButton, NavMenu } from './styles';
 
 interface HeaderProps {
   unsyncedCount: number;
-  onSync: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ unsyncedCount, onSync }) => (
-  <header style={{
-    padding: '1rem',
-    backgroundColor: '#2d2d2d',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottom: '1px solid #3498db',
-  }}>
-    <h1 style={{ margin: 0, fontSize: '1.5rem' }}>GPS Tracker</h1>
-    <SyncStatus unsyncedCount={unsyncedCount} onSync={onSync} />
-  </header>
-); 
+export function Header({ unsyncedCount }: HeaderProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  return (
+    <Container>
+      <Logo>
+        GPS Tracker<span>.</span>
+      </Logo>
+      
+      <NavMenu isOpen={isOpen}>
+        <Nav>
+          <NavItem 
+            active={location.pathname === '/'} 
+            onClick={() => navigate('/')}
+          >
+            Tracker
+          </NavItem>
+          <NavItem 
+            active={location.pathname === '/sync'}
+            onClick={() => navigate('/sync')}
+          >
+            Sincronização {unsyncedCount > 0 && `(${unsyncedCount})`}
+          </NavItem>
+        </Nav>
+      </NavMenu>
+
+      <MobileMenuButton onClick={() => setIsOpen(!isOpen)}>
+        <span></span>
+        <span></span>
+        <span></span>
+      </MobileMenuButton>
+    </Container>
+  );
+} 

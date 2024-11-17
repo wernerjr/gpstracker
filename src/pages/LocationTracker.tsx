@@ -21,11 +21,6 @@ export const LocationTracker: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <Header 
-        unsyncedCount={unsyncedCount} 
-        onSync={syncData} 
-      />
-
       <main style={{
         padding: '1rem',
         display: 'flex',
