@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { db, LocationRecord } from '../services/localDatabase';
-import { LocationData } from '../types';
+import { LocationData } from '../types/location';
 import { useSync } from './SyncContext';
 
 interface TrackingContextData {
