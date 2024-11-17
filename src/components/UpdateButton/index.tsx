@@ -13,7 +13,7 @@ const UpdateButton = () => {
     setIsSpinning(true);
     
     try {
-      if (!('serviceWorker' in navigator)) {
+      if (!navigator.serviceWorker) {
         throw new Error('Service Worker não é suportado');
       }
 
