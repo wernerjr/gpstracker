@@ -29,15 +29,25 @@ class LocationDatabase extends Dexie {
     );
   }
 
-  async getUnsynced(page: number = 1, limit: number = 20): Promise<LocationRecord[]> {
-    const offset = (page - 1) * limit;
-    return await this.locations
-      .where('synced')
-      .equals(0)
-      .offset(offset)
-      .limit(limit)
-      .reverse()
-      .toArray();
+  async getUnsynced(page: number = 1, pageSize: number = 20): Promise<LocationRecord[]> {
+    try {
+      const offset = (page - 1) * pageSize;
+      console.log(`Buscando registros - página: ${page}, offset: ${offset}, limit: ${pageSize}`);
+      
+      const records = await this.locations
+        .where('synced')
+        .equals(0)
+        .reverse()
+        .offset(offset)
+        .limit(pageSize)
+        .toArray();
+      
+      console.log(`Registros encontrados: ${records.length}`);
+      return records;
+    } catch (error) {
+      console.error('Erro ao obter registros não sincronizados:', error);
+      throw error;
+    }
   }
 
   async getUnsyncedCount(): Promise<number> {

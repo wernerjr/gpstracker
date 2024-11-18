@@ -36,4 +36,17 @@ export interface SyncResult {
   success: boolean;
   syncedCount: number;
   error?: string;
+}
+
+export interface SyncManagementReturn {
+  unsyncedRecords: LocationRecord[];
+  isSyncing: boolean;
+  isDeleting: boolean;
+  isLoading: boolean;
+  hasMore: boolean;
+  handleSync: () => Promise<SyncResult>;
+  handleDeleteRecord: (id: number) => Promise<void>;
+  handleDeleteUnsynced: () => Promise<void>;
+  loadUnsyncedRecords: (page: number, append?: boolean) => Promise<void>;
+  loadMoreRecords: () => void;
 } 

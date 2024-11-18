@@ -1,7 +1,8 @@
 .pageContainer {
   padding: 1rem;
   height: calc(100vh - 60px);
-  overflow: hidden;
+  overflow: hidden; 
+  margin-top: 70px;
 }
 
 .content {
@@ -135,4 +136,46 @@
   }
 }
 
-/* ... outros estilos que você já tinha ... */ 
+/* ... outros estilos que você já tinha ... */
+
+.loadingMore,
+.noMoreRecords {
+  text-align: center;
+  padding: 1rem;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.loadingMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.loadMoreContainer {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.loadMoreButton {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.loadMoreButton:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+}
+
+.loadMoreButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+  

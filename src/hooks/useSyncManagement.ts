@@ -7,18 +7,19 @@ import { EVENTS } from '../utils/events';
 import styles from '../pages/SyncPage/styles.module.css';
 import { SyncResult } from '../types/sync';
 import { useToast } from '../hooks/useToast';
+import { ERROR_MESSAGES } from '../constants/messages';
 
 interface SyncManagementReturn {
   unsyncedRecords: LocationRecord[];
   isSyncing: boolean;
   isDeleting: boolean;
+  isLoading: boolean;
   hasMore: boolean;
-  currentPage: number;
   handleSync: () => Promise<SyncResult>;
-  handleScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   handleDeleteRecord: (id: number) => Promise<void>;
   handleDeleteUnsynced: () => Promise<void>;
   loadUnsyncedRecords: (page: number, append?: boolean) => Promise<void>;
+  loadMoreRecords: () => void;
 }
 
 export const useSyncManagement = (): SyncManagementReturn => {
@@ -31,25 +32,37 @@ export const useSyncManagement = (): SyncManagementReturn => {
   const { updateUnsyncedCount } = useSync();
   const { showToast } = useToast();
 
-  const loadUnsyncedRecords = async (page: number, append: boolean = false) => {
+  const loadUnsyncedRecords = useCallback(async (page: number, append: boolean = false) => {
     if (isLoading) return;
     
     setIsLoading(true);
     try {
-      const records = await db.getUnsynced(page);
-      const totalCount = await db.getUnsyncedCount();
+      const pageSize = 20;
+      const records = await db.getUnsynced(page, pageSize);
+      console.log(`Página ${page}: Carregados ${records.length} registros`);
       
       setUnsyncedRecords(prev => {
-        const newRecords = append ? [...prev, ...records] : records;
-        return newRecords;
+        if (append) {
+          const existingIds = new Set(prev.map(r => r.id));
+          const newRecords = records.filter(r => !existingIds.has(r.id));
+          return [...prev, ...newRecords];
+        }
+        return records;
       });
-      setHasMore(records.length > 0 && unsyncedRecords.length < totalCount);
+      
+      setHasMore(records.length === pageSize);
+      setCurrentPage(page);
+      
     } catch (error) {
       console.error('Erro ao carregar registros:', error);
+      showToast(
+        `${ERROR_MESSAGES.LOAD_RECORDS_ERROR} ${error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR}`,
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
 
   const handleSync = async (): Promise<SyncResult> => {
     if (isSyncing) {
@@ -99,15 +112,22 @@ export const useSyncManagement = (): SyncManagementReturn => {
     };
   }, [refreshRecords]);
 
-  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    if (isLoading || !hasMore) return;
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (isLoading || !hasMore) {
+      console.log('Scroll ignorado:', { isLoading, hasMore });
+      return;
+    }
 
     const { scrollTop, clientHeight, scrollHeight } = event.currentTarget;
-    if (scrollHeight - scrollTop <= clientHeight * 1.5) {
-      setCurrentPage(prev => prev + 1);
+    const threshold = scrollHeight - scrollTop - clientHeight;
+    
+    console.log('Scroll metrics:', { threshold, scrollTop, clientHeight, scrollHeight });
+
+    if (threshold <= 50) {
+      console.log('Carregando próxima página:', currentPage + 1);
       loadUnsyncedRecords(currentPage + 1, true);
     }
-  };
+  }, [isLoading, hasMore, currentPage, loadUnsyncedRecords]);
 
   const handleDeleteRecord = useCallback(async (id: number) => {
     if (isDeleting) return;
@@ -145,16 +165,30 @@ export const useSyncManagement = (): SyncManagementReturn => {
     }
   }, [isDeleting, loadUnsyncedRecords, updateUnsyncedCount, showToast]);
 
+  const loadMoreRecords = useCallback(async () => {
+    if (isLoading || !hasMore) return;
+    
+    try {
+      await loadUnsyncedRecords(currentPage + 1, true);
+    } catch (error) {
+      console.error('Erro ao carregar mais registros:', error);
+      showToast(
+        `${ERROR_MESSAGES.LOAD_RECORDS_ERROR} ${error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR}`,
+        'error'
+      );
+    }
+  }, [currentPage, isLoading, hasMore, loadUnsyncedRecords, showToast]);
+
   return {
     unsyncedRecords,
     isSyncing,
     isDeleting,
+    isLoading,
     hasMore,
-    currentPage,
     handleSync,
-    handleScroll,
     handleDeleteRecord,
     handleDeleteUnsynced,
     loadUnsyncedRecords,
+    loadMoreRecords,
   };
 }; 

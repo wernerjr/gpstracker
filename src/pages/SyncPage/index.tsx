@@ -13,12 +13,13 @@ export function SyncPage() {
     unsyncedRecords,
     isSyncing,
     isDeleting,
+    isLoading,
     hasMore,
     handleSync,
-    handleScroll,
     handleDeleteRecord,
     handleDeleteUnsynced,
     loadUnsyncedRecords,
+    loadMoreRecords,
   } = useSyncManagement();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -131,7 +132,7 @@ export function SyncPage() {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.pageContainer}>
       <div className={styles.syncHeader}>
         <button
           onClick={handleSyncWithToast}
@@ -152,24 +153,33 @@ export function SyncPage() {
         </button>
       </div>
 
-      <div className={styles.recordsContainer}>
-        {unsyncedRecords.length > 0 ? (
-          <div 
-            className={styles.recordsList}
-            onScroll={handleScroll}
-            ref={containerRef}
-          >
-            {unsyncedRecords.map(record => (
-              <SyncRecord
-                key={record.id}
-                record={record}
-                onDelete={confirmDelete}
-              />
-            ))}
+      <div 
+        ref={containerRef}
+        className={styles.recordsList}
+      >
+        {unsyncedRecords.map(record => (
+          <SyncRecord
+            key={record.id}
+            record={record}
+            onDelete={handleDeleteWithToast}
+          />
+        ))}
+        
+        {unsyncedRecords.length > 0 && hasMore && (
+          <div className={styles.loadMoreContainer}>
+            <button 
+              className={styles.loadMoreButton}
+              onClick={loadMoreRecords}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Carregando...' : 'Carregar mais registros'}
+            </button>
           </div>
-        ) : (
+        )}
+
+        {unsyncedRecords.length === 0 && !isLoading && (
           <div className={styles.emptyState}>
-            Nenhum registro para sincronizar
+            Nenhum registro pendente de sincronização
           </div>
         )}
       </div>
