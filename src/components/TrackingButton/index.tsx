@@ -1,4 +1,4 @@
-import { FaLocationArrow } from 'react-icons/fa';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import styles from './styles.module.css';
 
 interface TrackingButtonProps {
@@ -16,7 +16,7 @@ export function TrackingButton({ isTracking, onStartTracking, onStopTracking }: 
       role="switch"
       aria-checked={isTracking}
     >
-      <FaLocationArrow className={styles.buttonIcon} aria-hidden="true" />
+      <MapPinIcon className={styles.buttonIcon} aria-hidden="true" />
       <span>{isTracking ? 'Parar Rastreamento' : 'Iniciar Rastreamento'}</span>
     </button>
   );

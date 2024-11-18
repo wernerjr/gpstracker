@@ -1,4 +1,7 @@
-import { FaSync, FaTrash } from 'react-icons/fa';
+import { 
+  ArrowPathIcon, // Substitui FaSync
+  TrashIcon // Substitui FaTrash
+} from '@heroicons/react/24/outline';
 import styles from './styles.module.css';
 
 interface SyncHeaderProps {
@@ -23,7 +26,7 @@ export function SyncHeader({
         disabled={isSyncing || unsyncedCount === 0}
         className={`${styles.button} ${styles.syncButton}`}
       >
-        <FaSync className={isSyncing ? styles.rotating : ''} />
+        <ArrowPathIcon className={isSyncing ? styles.rotating : ''} />
         {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
       </button>
 
@@ -32,7 +35,7 @@ export function SyncHeader({
         disabled={isDeleting || unsyncedCount === 0}
         className={`${styles.button} ${styles.deleteButton}`}
       >
-        <FaTrash />
+        <TrashIcon />
         {isDeleting ? 'Excluindo...' : 'Excluir Todos'}
       </button>
     </div>

@@ -34,6 +34,9 @@
 .logoIcon {
   font-size: 1.8rem;
   animation: pulse 2s infinite;
+  width: 24px;
+  height: 24px;
+  margin-right: 0.5rem;
 }
 
 .nav {
@@ -68,6 +71,8 @@
 
 .navIcon {
   font-size: 1.1rem;
+  width: 24px;
+  height: 24px;
 }
 
 @keyframes pulse {

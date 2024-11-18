@@ -32,5 +32,7 @@
 }
 
 .buttonIcon {
-  font-size: 1.2rem;
+  width: 24px;
+  height: 24px;
+  margin-right: 0.75rem;
 } 
