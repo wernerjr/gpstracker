@@ -151,7 +151,7 @@ export const useSyncManagement = (): SyncManagementReturn => {
     
     setIsDeleting(true);
     try {
-      const records = await db.getUnsynced();
+      const records = await db.getAllUnsynced();
       const ids = records.map(r => r.id).filter((id): id is number => id !== undefined);
       await db.deleteRecords(ids);
       await loadUnsyncedRecords(1);
