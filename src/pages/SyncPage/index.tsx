@@ -98,18 +98,6 @@ export function SyncPage() {
     });
   };
 
-  const confirmDelete = (id: number) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Excluir Registro',
-      message: ERROR_MESSAGES.DELETE_CONFIRMATION,
-      onConfirm: () => {
-        handleDeleteWithToast(id);
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-      },
-    });
-  };
-
   const confirmDeleteAll = () => {
     setConfirmDialog({
       isOpen: true,
