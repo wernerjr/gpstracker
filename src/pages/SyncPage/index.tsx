@@ -86,6 +86,18 @@ export function SyncPage() {
     }
   };
 
+  const handleDeleteSingleRecord = (id: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir Registro',
+      message: 'Tem certeza que deseja excluir este registro?',
+      onConfirm: async () => {
+        await handleDeleteWithToast(id);
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const confirmDelete = (id: number) => {
     setConfirmDialog({
       isOpen: true,
@@ -151,7 +163,7 @@ export function SyncPage() {
             <SyncRecord
               key={record.id}
               record={record}
-              onDelete={handleDeleteWithToast}
+              onDelete={handleDeleteSingleRecord}
             />
           ))}
           
