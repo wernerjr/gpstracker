@@ -13,13 +13,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     if (typeof count === 'number') {
       setUnsyncedCount(count);
     } else {
-      const records = await db.getUnsynced();
+      const records = await db.getAllUnsynced();
       setUnsyncedCount(records.length);
     }
   }, []);
 
   const getUnsyncedRecords = useCallback(async () => {
-    return await db.getUnsynced();
+    return await db.getAllUnsynced();
   }, []);
 
   const syncData = useCallback(async (): Promise<SyncResult> => {

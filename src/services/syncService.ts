@@ -58,7 +58,10 @@ export const syncLocations = async (): Promise<SyncResult> => {
       };
     }
 
-    const unsynced = await db.getUnsynced();
+    // Usa a nova função para obter todos os registros não sincronizados
+    const unsynced = await db.getAllUnsynced();
+    console.log('Total de registros para sincronizar:', unsynced.length);
+    
     if (!unsynced || unsynced.length === 0) {
       return { 
         success: true, 

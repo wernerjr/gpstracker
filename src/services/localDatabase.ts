@@ -31,14 +31,13 @@ class LocationDatabase extends Dexie {
 
   async getUnsynced(page: number = 1, limit: number = 20): Promise<LocationRecord[]> {
     const offset = (page - 1) * limit;
-    const records = await this.locations
+    return await this.locations
       .where('synced')
       .equals(0)
       .offset(offset)
       .limit(limit)
       .reverse()
       .toArray();
-    return records;
   }
 
   async getUnsyncedCount(): Promise<number> {
@@ -73,6 +72,21 @@ class LocationDatabase extends Dexie {
       console.log('Registro excluído com sucesso:', id);
     } catch (error) {
       console.error('Erro ao excluir registro:', error);
+      throw error;
+    }
+  }
+
+  async getAllUnsynced(): Promise<LocationRecord[]> {
+    try {
+      const records = await this.locations
+        .where('synced')
+        .equals(0)
+        .toArray();
+      
+      console.log('Total de registros não sincronizados:', records.length);
+      return records;
+    } catch (error) {
+      console.error('Erro ao obter todos os registros não sincronizados:', error);
       throw error;
     }
   }
