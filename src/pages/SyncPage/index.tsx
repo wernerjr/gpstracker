@@ -7,6 +7,7 @@ import styles from './styles.module.css';
 import { SyncHeader } from '../../components/SyncHeader';
 import { SyncRecord } from '../../components/SyncRecord';
 import { FaSync, FaTrash } from 'react-icons/fa';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export function SyncPage() {
   const {
@@ -171,8 +172,11 @@ export function SyncPage() {
               className={styles.loadMoreButton}
               onClick={loadMoreRecords}
               disabled={isLoading}
+              aria-label="Carregar mais registros"
             >
-              {isLoading ? 'Carregando...' : 'Carregar mais registros'}
+              <ChevronDownIcon 
+                className={`${styles.loadMoreIcon} ${isLoading ? styles.spinning : ''}`}
+              />
             </button>
           </div>
         )}
