@@ -134,58 +134,48 @@ export function SyncPage() {
 
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.syncHeader}>
-        <button
-          onClick={handleSyncWithToast}
-          disabled={isSyncing || unsyncedRecords.length === 0}
-          className={`${styles.button} ${styles.syncButton}`}
+      <SyncHeader 
+        onSync={handleSyncWithToast}
+        onDeleteAll={confirmDeleteAll}
+        isSyncing={isSyncing}
+        isDeleting={isDeleting}
+        unsyncedCount={unsyncedRecords.length}
+      />
+
+      <div className={styles.recordsContainer}>
+        <div 
+          ref={containerRef}
+          className={styles.recordsList}
         >
-          <FaSync className={isSyncing ? styles.rotating : ''} />
-          Sincronizar
-        </button>
+          {unsyncedRecords.map(record => (
+            <SyncRecord
+              key={record.id}
+              record={record}
+              onDelete={handleDeleteWithToast}
+            />
+          ))}
+          
+          {unsyncedRecords.length > 0 && hasMore && !isLoading && (
+            <div className={styles.loadMoreContainer}>
+              <button 
+                className={styles.loadMoreButton}
+                onClick={loadMoreRecords}
+                disabled={isLoading}
+                aria-label="Carregar mais registros"
+              >
+                <ChevronDownIcon 
+                  className={`${styles.loadMoreIcon} ${isLoading ? styles.spinning : ''}`}
+                />
+              </button>
+            </div>
+          )}
 
-        <button
-          onClick={confirmDeleteAll}
-          disabled={isDeleting || unsyncedRecords.length === 0}
-          className={`${styles.button} ${styles.deleteButton}`}
-        >
-          <FaTrash />
-          Excluir Todos
-        </button>
-      </div>
-
-      <div 
-        ref={containerRef}
-        className={styles.recordsList}
-      >
-        {unsyncedRecords.map(record => (
-          <SyncRecord
-            key={record.id}
-            record={record}
-            onDelete={handleDeleteWithToast}
-          />
-        ))}
-        
-        {unsyncedRecords.length > 0 && hasMore && (
-          <div className={styles.loadMoreContainer}>
-            <button 
-              className={styles.loadMoreButton}
-              onClick={loadMoreRecords}
-              disabled={isLoading}
-              aria-label="Carregar mais registros"
-            >
-              <ChevronDownIcon 
-                className={`${styles.loadMoreIcon} ${isLoading ? styles.spinning : ''}`}
-              />
-            </button>
-          </div>
-        )}
-
-        {unsyncedRecords.length === 0 && !isLoading && (
-          <div className={styles.emptyState}>
-            Nenhum registro pendente de sincronização
-          </div>
-        )}
+          {unsyncedRecords.length === 0 && !isLoading && (
+            <div className={styles.emptyState}>
+              Nenhum registro pendente de sincronização
+            </div>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog

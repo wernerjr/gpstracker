@@ -1,5 +1,6 @@
 .header {
   display: flex;
+  justify-content: center;
   gap: 1rem;
   padding: 1rem;
   background-color: var(--color-surface);
@@ -17,6 +18,8 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 150px;
+  justify-content: center;
 }
 
 .button:disabled {

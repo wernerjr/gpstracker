@@ -1,28 +1,31 @@
 .recordItem {
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
+  background-color: var(--color-surface-dark);
   margin-bottom: 0.5rem;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .recordContent {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  padding: 1rem;
 }
 
 .row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-right: 2rem;
 }
 
 .field {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
+  min-width: 0;
+  flex: 1;
 }
 
 .icon {
@@ -41,9 +44,16 @@
   color: white;
   font-size: 0.9rem;
   font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .deleteButton {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
   background: transparent;
   border: none;
   padding: 0.25rem;
@@ -51,6 +61,7 @@
   color: #e74c3c;
   opacity: 0.7;
   transition: opacity 0.2s;
+  z-index: 1;
 }
 
 .deleteButton:hover {
@@ -67,4 +78,19 @@
 
 .accuracyLow {
   color: #2ecc71;
+}
+
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .field {
+    width: 100%;
+  }
+
+  .value {
+    font-size: 0.9rem;
+  }
 } 
