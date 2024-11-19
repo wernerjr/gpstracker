@@ -4,6 +4,7 @@ import { TrackingButton } from '../../components/TrackingButton';
 import { SpeedCard } from '../../components/SpeedCard';
 import { LocationCard } from '../../components/LocationCard';
 import UpdateButton from '../../components/UpdateButton';
+import { SaveIntervalControl } from '../../components/SaveIntervalControl';
 
 export function Tracker() {
   const { 
@@ -25,6 +26,8 @@ export function Tracker() {
           onStartTracking={startTracking}
           onStopTracking={stopTracking}
         />
+
+        <SaveIntervalControl />
 
         <div className={styles.cardsGrid}>
           <SpeedCard title="Velocidade Atual" value={currentSpeed} />

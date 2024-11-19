@@ -16,6 +16,8 @@ interface TrackingContextData {
   maxSpeed: number;
   accuracy: number | null;
   currentLocation: LocationData | null;
+  saveInterval: number;
+  setSaveInterval: (interval: number) => void;
 }
 
 const TrackingContext = createContext<TrackingContextData>({} as TrackingContextData);
@@ -28,10 +30,12 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
   const [maxSpeed, setMaxSpeed] = useState(0);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+  const [saveInterval, setSaveInterval] = useState(0);
   
   const watchId = useRef<number | null>(null);
   const trackingGuid = useRef<string | null>(null);
   const speedReadings = useRef<number[]>([]);
+  const lastSaveTime = useRef<number>(0);
   const { updateUnsyncedCount } = useSync();
 
   useEffect(() => {
@@ -78,22 +82,26 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     setAverageSpeed(calculateAverageSpeed(speedReadings.current));
     setMaxSpeed(Math.max(...speedReadings.current));
 
-    try {
-      await db.addLocation({
-        guid: trackingGuid.current,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        speed,
-        timestamp: position.timestamp
-      });
-      
-      await updateUnsyncedCount();
-      emitNewLocationRecord();
-    } catch (error) {
-      console.error('Erro ao salvar localização:', error);
+    const currentTime = Date.now();
+    if (saveInterval === 0 || currentTime - lastSaveTime.current >= saveInterval * 1000) {
+      try {
+        await db.addLocation({
+          guid: trackingGuid.current,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed,
+          timestamp: position.timestamp
+        });
+        
+        lastSaveTime.current = currentTime;
+        await updateUnsyncedCount();
+        emitNewLocationRecord();
+      } catch (error) {
+        console.error('Erro ao salvar localização:', error);
+      }
     }
-  }, [isTracking, updateUnsyncedCount]);
+  }, [isTracking, updateUnsyncedCount, saveInterval]);
 
   const checkGPSPermissions = async (): Promise<boolean> => {
     try {
@@ -119,6 +127,17 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
       speedReadings.current = [];
       trackingGuid.current = v4();
       setIsTracking(true);
+
+      watchId.current = navigator.geolocation.watchPosition(
+        handlePositionUpdate,
+        (error) => console.error('Erro no GPS:', error),
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 4000
+        }
+      );
+
       showToast('Rastreamento iniciado', 'success');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -170,7 +189,9 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     averageSpeed,
     maxSpeed,
     accuracy,
-    currentLocation
+    currentLocation,
+    saveInterval,
+    setSaveInterval
   }), [
     isTracking,
     startTracking,
@@ -179,7 +200,9 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     averageSpeed,
     maxSpeed,
     accuracy,
-    currentLocation
+    currentLocation,
+    saveInterval,
+    setSaveInterval
   ]);
 
   return (
